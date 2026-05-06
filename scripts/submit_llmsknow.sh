@@ -24,7 +24,7 @@
 #
 # Each phase must complete before submitting the next.
 
-BASE=/users/inguyen4/data/bats/projects/interp/LLMsKnowPruningHallucinationBaseline
+BASE=/home/inguyen4/Desktop/research/interp/LLMsKnowPruningHallucinationBaseline
 mkdir -p $BASE/logs
 
 PHASE=""
