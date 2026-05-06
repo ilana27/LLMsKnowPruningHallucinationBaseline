@@ -230,8 +230,10 @@ def generate_model_answers(data, model, tokenizer, device, model_name, do_sample
 def init_wandb(args):
     cfg = vars(args)
     cfg['dataset'] = args.dataset
+    model_short = MODEL_FRIENDLY_NAMES.get(args.model, args.model.split('/')[-1])
     wandb.init(
         project="generate_answers",
+        name=f"{model_short}_{args.dataset}",
         config=cfg
     )
 

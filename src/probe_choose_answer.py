@@ -30,8 +30,10 @@ def parse_args_and_init_wandb():
     parser.add_argument("--n_samples", type=int, default=None, help="In case you want to use a subset of the data for the analysis")
     args = parser.parse_args()
 
+    model_short = MODEL_FRIENDLY_NAMES.get(args.model, args.model.split('/')[-1])
     wandb.init(
         project="probe_choose_answer",
+        name=f"{model_short}_{args.dataset}_layer{args.layer}_{args.token}",
         config=vars(args)
     )
     return args

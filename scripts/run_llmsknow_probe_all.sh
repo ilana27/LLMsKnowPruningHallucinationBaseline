@@ -10,7 +10,7 @@
 #SBATCH --mail-type=END,FAIL
 #SBATCH --mail-user=ilana_nguyen1@brown.edu
 
-BASE=/users/inguyen4/data/bats/projects/interp/LLMsKnowPruningHallucinationBaseline
+BASE=/home/inguyen4/Desktop/research/interp/LLMsKnowPruningHallucinationBaseline
 
 source /home/inguyen4/Desktop/research/interp/safety/.venv/bin/activate
 
