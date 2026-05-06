@@ -133,7 +133,7 @@ def load_data_winogrande(split):
 
 def load_data_triviaqa(test=False, legacy=False):
     split = 'dev' if test else 'train'
-    file_path = f'/users/inguyen4/data/bats/projects/interp/safety/data/triviaqa/unfiltered-web-{split}.json'
+    file_path = f'/home/inguyen4/Desktop/research/interp/safety/data/triviaqa/unfiltered-web-{split}.json'
     with open(file_path, 'r', encoding='utf-8') as f:
         data = json.load(f)['Data']
     data, _ = train_test_split(data, train_size=10000, random_state=42)
