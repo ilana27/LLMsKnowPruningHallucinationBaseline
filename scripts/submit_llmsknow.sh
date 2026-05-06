@@ -30,7 +30,7 @@ mkdir -p $BASE/logs
 PHASE=""
 LAYER=15
 TOKEN="last_q_token"
-THROTTLE=4
+THROTTLE=3
 ARRAY_OVERRIDE=""
 
 while [[ $# -gt 0 ]]; do
