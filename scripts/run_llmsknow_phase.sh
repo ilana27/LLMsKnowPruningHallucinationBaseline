@@ -11,7 +11,7 @@
 #SBATCH --mail-user=ilana_nguyen1@brown.edu
 # Job name, output, and error paths are set by submit_llmsknow.sh via sbatch CLI flags.
 
-BASE=/users/inguyen4/data/bats/projects/interp/LLMsKnowPruningHallucinationBaseline
+BASE=/home/inguyen4/Desktop/research/interp/LLMsKnowPruningHallucinationBaseline
 
 DATASETS=(triviaqa triviaqa_test triviaqa_hallucinated triviaqa_hallucinated_test
           popqa popqa_test pubqa pubqa_test math math_test)
