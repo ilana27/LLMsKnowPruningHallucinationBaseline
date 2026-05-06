@@ -132,38 +132,33 @@ def load_data_winogrande(split):
 
 
 def load_data_triviaqa(test=False, legacy=False):
-    if legacy:
-        with open('../data/verified-web-dev.json') as f:
-            data_verified = json.load(f)
-            data_verified = data_verified['Data']
-        with open('../data/web-dev.json') as f:
-            data = json.load(f)
-            data = data['Data']
-        questions_from_verified = [x['Question'] for x in data_verified]
-        data_not_verified = []
-        for x in data:
-            if x['Question'] in questions_from_verified:
-                pass
-            else:
-                data_not_verified.append(x)
+    split = 'dev' if test else 'train'
+    file_path = f'/users/inguyen4/data/bats/projects/interp/safety/data/triviaqa/unfiltered-web-{split}.json'
+    with open(file_path, 'r', encoding='utf-8') as f:
+        data = json.load(f)['Data']
+    data, _ = train_test_split(data, train_size=10000, random_state=42)
+    return [ex['Question'] for ex in data], [ex['Answer']['Aliases'] for ex in data]
 
-        print("Length of not verified data: ", len(data_not_verified))
-        print("Length of verified data: ", len(data_verified))
 
-        if test:
-            return [ex['Question'] for ex in data_verified], [ex['Answer']['Aliases'] for ex in data_verified]
-        else:
-            return [ex['Question'] for ex in data_not_verified], [ex['Answer']['Aliases'] for ex in data_not_verified]
-    else:
-        if test:
-            file_path = '../data/triviaqa-unfiltered/unfiltered-web-dev.json'
-        else:
-            file_path = '../data/triviaqa-unfiltered/unfiltered-web-train.json'
-        with open(file_path) as f:
-            data = json.load(f)
-            data = data['Data']
-        data, _ = train_test_split(data, train_size=10000, random_state=42)
-        return [ex['Question'] for ex in data], [ex['Answer']['Aliases'] for ex in data]
+def load_data_triviaqa_hallucinated(test=False):
+    data = pd.read_csv('../data/triviaqa_hallucinated_Llama-3.1-8B-Instruct.csv')
+    train, test_data = train_test_split(data, test_size=0.2, random_state=42)
+    split = test_data if test else train
+    return split['clean_prompt'].tolist(), split['correct_answer'].tolist()
+
+
+def load_data_popqa(test=False):
+    data = pd.read_csv('../data/popqa.csv')
+    train, test_data = train_test_split(data, test_size=0.2, random_state=42)
+    split = test_data if test else train
+    return split['question'].tolist(), [eval(a) for a in split['possible_answers'].tolist()]
+
+
+def load_data_pubqa(test=False):
+    data = pd.read_csv('../data/pubqa_1000.csv')
+    train, test_data = train_test_split(data, test_size=0.2, random_state=42)
+    split = test_data if test else train
+    return split['question'].tolist(), split['correct_answer'].tolist()
 
 def load_data_math(test=False):
     if test:
@@ -393,6 +388,24 @@ def load_data(dataset_name):
         preprocess_fn = triviqa_preprocess
     elif dataset_name == 'triviaqa_test':
         all_questions, labels = load_data_triviaqa(True)
+        preprocess_fn = triviqa_preprocess
+    elif dataset_name == 'triviaqa_hallucinated':
+        all_questions, labels = load_data_triviaqa_hallucinated(False)
+        preprocess_fn = triviqa_preprocess
+    elif dataset_name == 'triviaqa_hallucinated_test':
+        all_questions, labels = load_data_triviaqa_hallucinated(True)
+        preprocess_fn = triviqa_preprocess
+    elif dataset_name == 'popqa':
+        all_questions, labels = load_data_popqa(False)
+        preprocess_fn = triviqa_preprocess
+    elif dataset_name == 'popqa_test':
+        all_questions, labels = load_data_popqa(True)
+        preprocess_fn = triviqa_preprocess
+    elif dataset_name == 'pubqa':
+        all_questions, labels = load_data_pubqa(False)
+        preprocess_fn = triviqa_preprocess
+    elif dataset_name == 'pubqa_test':
+        all_questions, labels = load_data_pubqa(True)
         preprocess_fn = triviqa_preprocess
     elif dataset_name == 'imdb':
         all_questions, labels = load_data_imdb('train')

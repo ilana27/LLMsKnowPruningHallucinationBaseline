@@ -258,6 +258,31 @@ def compute_correctness_winogrande(model_answers, labels, wrong_labels, model_na
                 exact_answers.append(model_answer[wrong_ans_index:wrong_ans_index + len(wrong_label)])
     return {"correct_labels": labels, "incorrect_answer": wrong_labels, "correctness": correctness, "exact_answer": exact_answers}
 
+def compute_correctness_popqa(model_answers, labels):
+    correctness = []
+    for model_answer, aliases in zip(model_answers, labels):
+        if isinstance(aliases, str):
+            aliases = eval(aliases)
+        correct = int(any(alias.lower() in model_answer.lower() for alias in aliases))
+        correctness.append(correct)
+    return {"correctness": correctness}
+
+
+def compute_correctness_pubqa(model_answers, labels):
+    correctness = []
+    for model_answer, label in zip(model_answers, labels):
+        ans_lower = model_answer.lower()
+        yes_idx = ans_lower.find('yes')
+        no_idx = ans_lower.find('no')
+        if yes_idx == -1 and no_idx == -1:
+            correctness.append(0)
+        elif yes_idx != -1 and (no_idx == -1 or yes_idx < no_idx):
+            correctness.append(int(str(label).lower() == 'yes'))
+        else:
+            correctness.append(int(str(label).lower() == 'no'))
+    return {"correctness": correctness}
+
+
 def compute_correctness(all_questions, dataset_name, model_name, labels, model, model_answers, tokenizer, wrong_labels):
     if 'natural_questions' in dataset_name:
         if model == 'mistralai/Mistral-7B-Instruct-v0.2':
@@ -279,6 +304,9 @@ def compute_correctness(all_questions, dataset_name, model_name, labels, model, 
 
 CORRECTNESS_FN = {
     'triviaqa': compute_correctness_triviaqa,
+    'triviaqa_hallucinated': compute_correctness_triviaqa,
+    'popqa': compute_correctness_popqa,
+    'pubqa': compute_correctness_pubqa,
     'imdb': compute_correctness_imdb,
     'winobias': compute_correctness_winobias,
     'winogrande': compute_correctness_winogrande,

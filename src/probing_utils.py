@@ -39,6 +39,7 @@ LAYERS_TO_TRACE = {
     'mistralai/Mistral-7B-v0.3': LAYERS_TO_TRACE_MISTRAL,
     'meta-llama/Meta-Llama-3-8B-Instruct': LAYERS_TO_TRACE_LLAMA,
     'meta-llama/Meta-Llama-3-8B': LAYERS_TO_TRACE_LLAMA,
+    'meta-llama/Llama-3.1-8B-Instruct': LAYERS_TO_TRACE_LLAMA,
 }
 
 N_LAYERS = {
@@ -46,19 +47,24 @@ N_LAYERS = {
     'mistralai/Mistral-7B-v0.3': N_LAYERS_MISTRAL,
     'meta-llama/Meta-Llama-3-8B-Instruct': N_LAYER_LLAMA,
     'meta-llama/Meta-Llama-3-8B': N_LAYER_LLAMA,
+    'meta-llama/Llama-3.1-8B-Instruct': N_LAYER_LLAMA,
 }
 
 HIDDEN_SIZE = {
     'tiiuae/falcon-40b-instruct': 8192,
     'mistralai/Mistral-7B-Instruct-v0.2': 4096,
     'mistralai/Mistral-7B-v0.3': 4096,
-    'meta-llama/Meta-Llama-3-8B-Instruct': 8192,
-    'meta-llama/Meta-Llama-3-8B': 8192,
+    'meta-llama/Meta-Llama-3-8B-Instruct': 4096,
+    'meta-llama/Meta-Llama-3-8B': 4096,
+    'meta-llama/Llama-3.1-8B-Instruct': 4096,
     'google/gemma-7b': 3072,
     'google/gemma-7b-it': 3072,
 }
 
 LIST_OF_DATASETS = ['triviaqa',
+                    'triviaqa_hallucinated',
+                    'popqa',
+                    'pubqa',
                     'imdb',
                     'winobias',
                     'hotpotqa',
@@ -72,16 +78,18 @@ LIST_OF_DATASETS = ['triviaqa',
 LIST_OF_TEST_DATASETS = [f"{x}_test" for x in LIST_OF_DATASETS]
 
 LIST_OF_MODELS = ['mistralai/Mistral-7B-Instruct-v0.2',
-                                            'mistralai/Mistral-7B-v0.3',
-                                            'meta-llama/Meta-Llama-3-8B',
-                                            'meta-llama/Meta-Llama-3-8B-Instruct',
-                                            ]
+                  'mistralai/Mistral-7B-v0.3',
+                  'meta-llama/Meta-Llama-3-8B',
+                  'meta-llama/Meta-Llama-3-8B-Instruct',
+                  'meta-llama/Llama-3.1-8B-Instruct',
+                  ]
 
 MODEL_FRIENDLY_NAMES = {
     'mistralai/Mistral-7B-Instruct-v0.2': 'mistral-7b-instruct',
     'mistralai/Mistral-7B-v0.3': 'mistral-7b',
     'meta-llama/Meta-Llama-3-8B': 'llama-3-8b',
     'meta-llama/Meta-Llama-3-8B-Instruct': 'llama-3-8b-instruct',
+    'meta-llama/Llama-3.1-8B-Instruct': 'llama-3.1-8b-instruct',
 }
 
 LIST_OF_PROBING_LOCATIONS = ['mlp', 'mlp_last_layer_only', 'mlp_last_layer_only_input', 'attention_output']
