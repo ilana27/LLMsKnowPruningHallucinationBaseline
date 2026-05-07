@@ -12,8 +12,8 @@ from tqdm import tqdm
 from transformers import set_seed
 
 from compute_correctness import compute_correctness
-from probing_utils import load_model_and_validate_gpu, tokenize, generate, LIST_OF_DATASETS, MODEL_FRIENDLY_NAMES, \
-    LIST_OF_MODELS
+from probing_utils import load_model_and_validate_gpu, tokenize, generate, LIST_OF_DATASETS, LIST_OF_TEST_DATASETS, \
+    MODEL_FRIENDLY_NAMES, LIST_OF_MODELS
 
 
 def parse_args():
@@ -22,7 +22,7 @@ def parse_args():
                         choices=LIST_OF_MODELS,
                         required=True)
     parser.add_argument("--dataset",
-                        choices=LIST_OF_DATASETS)
+                        choices=LIST_OF_DATASETS + LIST_OF_TEST_DATASETS)
     parser.add_argument("--verbose", action='store_true', help='print more information')
     parser.add_argument("--n_samples", type=int, help='number of examples to use', default=None)
 
@@ -149,7 +149,7 @@ def load_data_triviaqa_hallucinated(test=False):
 
 def load_data_popqa(test=False):
     data = pd.read_csv('../data/popqa.csv')
-    train, test_data = train_test_split(data, train_size=1000, random_state=42)
+    train, test_data = train_test_split(data, train_size=1000, test_size=200, random_state=42)
     split = test_data if test else train
     def _sanitize(s):
         return s.encode('utf-8', errors='surrogatepass').decode('utf-8', errors='replace')
