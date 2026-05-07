@@ -30,8 +30,10 @@ def parse_args_and_init_wandb():
 
     args = parser.parse_args()
 
+    model_short = MODEL_FRIENDLY_NAMES.get(args.model, args.model.split('/')[-1])
     wandb.init(
         project="retries_hallucinations",
+        name=f"{model_short}_{args.dataset}",
         config=vars(args)
     )
 

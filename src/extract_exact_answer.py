@@ -28,8 +28,10 @@ def parse_args():
     parser.add_argument("--model", choices=LIST_OF_MODELS, default='mistralai/Mistral-7B-Instruct-v0.2', help="model which answers are to be extracted")
 
     args = parser.parse_args()
+    model_short = MODEL_FRIENDLY_NAMES.get(args.model, args.model.split('/')[-1])
     wandb.init(
         project="extract_exact_answer",
+        name=f"{model_short}_{args.dataset}",
         config=vars(args)
         )
 
