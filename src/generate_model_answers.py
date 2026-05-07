@@ -549,7 +549,8 @@ def main():
 
     print("Saving answers to ", file_path_answers)
 
-    pd.DataFrame.from_dict(output_csv).to_csv(file_path_answers)
+    with open(file_path_answers, 'w', encoding='utf-8', errors='replace', newline='') as f:
+        pd.DataFrame.from_dict(output_csv).to_csv(f)
 
     print("Saving input output ids to ", file_path_output_ids)
     torch.save(input_output_ids, file_path_output_ids)
