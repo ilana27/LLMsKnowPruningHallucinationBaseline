@@ -136,7 +136,7 @@ def load_data_triviaqa(test=False, legacy=False):
     file_path = f'/home/inguyen4/Desktop/research/interp/safety/data/triviaqa/unfiltered-web-{split}.json'
     with open(file_path, 'r', encoding='utf-8') as f:
         data = json.load(f)['Data']
-    data, _ = train_test_split(data, train_size=10000, random_state=42)
+    data, _ = train_test_split(data, train_size=1000, random_state=42)
     return [ex['Question'] for ex in data], [ex['Answer']['Aliases'] for ex in data]
 
 
@@ -149,7 +149,7 @@ def load_data_triviaqa_hallucinated(test=False):
 
 def load_data_popqa(test=False):
     data = pd.read_csv('../data/popqa.csv')
-    train, test_data = train_test_split(data, test_size=0.2, random_state=42)
+    train, test_data = train_test_split(data, train_size=1000, random_state=42)
     split = test_data if test else train
     def _sanitize(s):
         return s.encode('utf-8', errors='surrogatepass').decode('utf-8', errors='replace')
