@@ -18,9 +18,8 @@
 #   --array <range>          Override SLURM array range, e.g. --array 1,3 to re-run specific datasets
 #
 # Dataset index mapping (1-based):
-#   1=triviaqa  2=triviaqa_test  3=triviaqa_hallucinated  4=triviaqa_hallucinated_test
-#   5=popqa     6=popqa_test     7=pubqa                  8=pubqa_test
-#   9=math      10=math_test
+#   1=triviaqa  2=triviaqa_test  3=popqa  4=popqa_test
+#   5=pubqa     6=pubqa_test     7=math   8=math_test
 #
 # Each phase must complete before submitting the next.
 
@@ -49,7 +48,7 @@ if [[ -z "$PHASE" ]]; then
     exit 1
 fi
 
-N_DATASETS=10
+N_DATASETS=8
 
 if [[ "$PHASE" == "probe_all_layers" ]]; then
     JOB=$(sbatch --parsable \
@@ -84,7 +83,7 @@ else
     echo "Monitor with: squeue -u \$USER"
     echo ""
     echo "Dataset mapping:"
-    DATASETS=(triviaqa triviaqa_test triviaqa_hallucinated triviaqa_hallucinated_test
+    DATASETS=(triviaqa triviaqa_test
               popqa popqa_test pubqa pubqa_test math math_test)
     for (( i=0; i<N_DATASETS; i++ )); do
         echo "  Task $((i+1)): ${DATASETS[$i]}"

@@ -262,6 +262,7 @@ def compute_correctness_popqa(model_answers, labels):
     correctness = []
     for model_answer, aliases in zip(model_answers, labels):
         if isinstance(aliases, str):
+            aliases = aliases.encode('utf-8', errors='surrogatepass').decode('utf-8', errors='replace')
             aliases = eval(aliases)
         correct = int(any(alias.lower() in model_answer.lower() for alias in aliases))
         correctness.append(correct)

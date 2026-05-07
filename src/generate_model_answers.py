@@ -151,7 +151,9 @@ def load_data_popqa(test=False):
     data = pd.read_csv('../data/popqa.csv')
     train, test_data = train_test_split(data, test_size=0.2, random_state=42)
     split = test_data if test else train
-    return split['question'].tolist(), [eval(a) for a in split['possible_answers'].tolist()]
+    def _sanitize(s):
+        return s.encode('utf-8', errors='surrogatepass').decode('utf-8', errors='replace')
+    return split['question'].tolist(), [eval(_sanitize(a)) for a in split['possible_answers'].tolist()]
 
 
 def load_data_pubqa(test=False):

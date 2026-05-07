@@ -13,7 +13,7 @@
 
 BASE=/home/inguyen4/Desktop/research/interp/LLMsKnowPruningHallucinationBaseline
 
-DATASETS=(triviaqa triviaqa_test triviaqa_hallucinated triviaqa_hallucinated_test
+DATASETS=(triviaqa triviaqa_test
           popqa popqa_test pubqa pubqa_test math math_test)
 
 DATASET=${DATASETS[$((SLURM_ARRAY_TASK_ID - 1))]}
