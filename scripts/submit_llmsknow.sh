@@ -7,7 +7,7 @@
 #   bash submit_llmsknow.sh --phase extract
 #   bash submit_llmsknow.sh --phase resample
 #   bash submit_llmsknow.sh --phase extract_resamples
-#   bash submit_llmsknow.sh --phase probe_all_layers    # single job, TriviaQA only
+#   bash submit_llmsknow.sh --phase probe_all_layers    # defaults to train splits 1,3,5,7
 #   bash submit_llmsknow.sh --phase probe_choose --layer 15 --token last_q_token
 #
 # Flags:
@@ -50,42 +50,33 @@ fi
 
 N_DATASETS=8
 
-if [[ "$PHASE" == "probe_all_layers" ]]; then
-    JOB=$(sbatch --parsable \
-        --job-name="llmsknow_probe_all" \
-        --output="$BASE/logs/probe_all_%j.out" \
-        --error="$BASE/logs/probe_all_%j.err" \
-        $BASE/scripts/run_llmsknow_probe_all.sh)
-    echo "Submitted single job ${JOB} for phase: probe_all_layers (TriviaQA)"
-    echo "After completion, check logs for best --layer and --token, then run:"
-    echo "  bash submit_llmsknow.sh --phase probe_choose --layer <N> --token <TOKEN>"
+if [[ -n "$ARRAY_OVERRIDE" ]]; then
+    ARRAY_RANGE="$ARRAY_OVERRIDE"
+elif [[ "$PHASE" == "probe_all_layers" ]]; then
+    ARRAY_RANGE="1,3,5,7"  # train splits only
 else
-    if [[ -n "$ARRAY_OVERRIDE" ]]; then
-        ARRAY_RANGE="$ARRAY_OVERRIDE"
-    else
-        ARRAY_RANGE="1-${N_DATASETS}"
-    fi
-
-    if [[ $THROTTLE -gt 0 ]]; then
-        ARRAY_RANGE="${ARRAY_RANGE}%${THROTTLE}"
-    fi
-
-    JOB=$(sbatch --parsable \
-        --job-name="llmsknow_${PHASE}" \
-        --output="$BASE/logs/${PHASE}_%A_%a.out" \
-        --error="$BASE/logs/${PHASE}_%A_%a.err" \
-        --array=${ARRAY_RANGE} \
-        --export=ALL,PHASE=${PHASE},LAYER=${LAYER},TOKEN=${TOKEN} \
-        $BASE/scripts/run_llmsknow_phase.sh)
-
-    echo "Submitted array job ${JOB} for phase: ${PHASE} (array: ${ARRAY_RANGE})"
-    echo ""
-    echo "Monitor with: squeue -u \$USER"
-    echo ""
-    echo "Dataset mapping:"
-    DATASETS=(triviaqa triviaqa_test
-              popqa popqa_test pubqa pubqa_test math math_test)
-    for (( i=0; i<N_DATASETS; i++ )); do
-        echo "  Task $((i+1)): ${DATASETS[$i]}"
-    done
+    ARRAY_RANGE="1-${N_DATASETS}"
 fi
+
+if [[ $THROTTLE -gt 0 ]]; then
+    ARRAY_RANGE="${ARRAY_RANGE}%${THROTTLE}"
+fi
+
+JOB=$(sbatch --parsable \
+    --job-name="llmsknow_${PHASE}" \
+    --output="$BASE/logs/${PHASE}_%A_%a.out" \
+    --error="$BASE/logs/${PHASE}_%A_%a.err" \
+    --array=${ARRAY_RANGE} \
+    --export=ALL,PHASE=${PHASE},LAYER=${LAYER},TOKEN=${TOKEN} \
+    $BASE/scripts/run_llmsknow_phase.sh)
+
+echo "Submitted array job ${JOB} for phase: ${PHASE} (array: ${ARRAY_RANGE})"
+echo ""
+echo "Monitor with: squeue -u \$USER"
+echo ""
+echo "Dataset mapping:"
+DATASETS=(triviaqa triviaqa_test
+          popqa popqa_test pubqa pubqa_test math math_test)
+for (( i=0; i<N_DATASETS; i++ )); do
+    echo "  Task $((i+1)): ${DATASETS[$i]}"
+done

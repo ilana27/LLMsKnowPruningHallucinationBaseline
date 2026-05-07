@@ -49,6 +49,11 @@ case "$PHASE" in
       --model $MODEL \
       --dataset $DATASET \
       --do_resampling ;;
+  probe_all_layers)
+    python probe_all_layers_and_tokens.py \
+      --model $MODEL \
+      --dataset $DATASET \
+      --probe_at mlp_last_layer_only ;;
   probe_choose)
     python probe_choose_answer.py \
       --model $MODEL \
