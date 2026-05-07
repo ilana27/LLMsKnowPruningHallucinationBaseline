@@ -42,7 +42,8 @@ case "$PHASE" in
     python resampling.py \
       --model $MODEL \
       --dataset $DATASET \
-      --n_resamples 30 ;;
+      --n_resamples 30 \
+      --seed 42 ;;
   extract_resamples)
     python extract_exact_answer.py \
       --model $MODEL \
