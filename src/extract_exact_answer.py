@@ -26,6 +26,8 @@ def parse_args():
     parser.add_argument("--n_samples", type=int, default=0)
     parser.add_argument("--extraction_model", choices=LIST_OF_MODELS, default='mistralai/Mistral-7B-Instruct-v0.2', help="model used for exact answer extraction")
     parser.add_argument("--model", choices=LIST_OF_MODELS, default='mistralai/Mistral-7B-Instruct-v0.2', help="model which answers are to be extracted")
+    parser.add_argument("--resample_seed", type=int, default=None, help="Seed used in resampling.py --seed; needed to recover sampled indices when --limit_samples was used.")
+    parser.add_argument("--resample_limit_samples", type=int, default=None, help="Value of --limit_samples passed to resampling.py; used to recover which rows were sampled.")
 
     args = parser.parse_args()
     model_short = MODEL_FRIENDLY_NAMES.get(args.model, args.model.split('/')[-1])
@@ -139,7 +141,16 @@ def main():
 
     if args.do_resampling > 0:
         all_resample_answers = torch.load(resampling_file)
-
+        n_resampled = len(all_resample_answers[0])
+        if len(model_answers) != n_resampled:
+            assert args.resample_seed is not None and args.resample_limit_samples is not None, (
+                "Resampling was run with --limit_samples; pass --resample_seed and "
+                "--resample_limit_samples to recover the sampled subset."
+            )
+            sampled_indices = model_answers.sample(
+                args.resample_limit_samples, random_state=args.resample_seed
+            ).index.tolist()
+            model_answers = model_answers.loc[sampled_indices].reset_index(drop=True)
 
     exact_answers = []
     valid_lst = []

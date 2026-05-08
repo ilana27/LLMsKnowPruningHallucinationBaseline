@@ -2,12 +2,12 @@ import argparse
 
 import torch
 
-from probing_utils import LIST_OF_MODELS, LIST_OF_DATASETS, MODEL_FRIENDLY_NAMES
+from probing_utils import LIST_OF_MODELS, LIST_OF_DATASETS, LIST_OF_TEST_DATASETS, MODEL_FRIENDLY_NAMES
 
 parser = argparse.ArgumentParser(
     description='Merge separate resampling runs')
 parser.add_argument("--model", choices=LIST_OF_MODELS)
-parser.add_argument("--dataset", choices=LIST_OF_DATASETS,
+parser.add_argument("--dataset", choices=LIST_OF_DATASETS + LIST_OF_TEST_DATASETS,
                     required=True)
 
 args = parser.parse_args()

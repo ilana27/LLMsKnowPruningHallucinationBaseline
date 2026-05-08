@@ -44,12 +44,31 @@ case "$PHASE" in
       --dataset $DATASET \
       --n_resamples 30 \
       --seed 42 \
-      --limit_samples 200 ;;
+      --limit_samples ${LIMIT_SAMPLES:-200} ;;
+  resample_parallel)
+    # 8 datasets × 6 tags = 48 tasks (task IDs 1-48).
+    # Seeds avoid 42 (used by the serial resample phase).
+    N_TAGS=6
+    DATASET_IDX=$(( (SLURM_ARRAY_TASK_ID - 1) / N_TAGS ))
+    TAG=$(( (SLURM_ARRAY_TASK_ID - 1) % N_TAGS + 1 ))
+    DATASET=${DATASETS[$DATASET_IDX]}
+    SEEDS=(0 5 26 63 70 100)
+    SEED=${SEEDS[$((TAG - 1))]}
+    echo "Task ${SLURM_ARRAY_TASK_ID}: dataset=${DATASET} tag=${TAG} seed=${SEED}"
+    python resampling.py \
+      --model $MODEL \
+      --dataset $DATASET \
+      --n_resamples 5 \
+      --seed $SEED \
+      --tag $TAG \
+      --limit_samples ${LIMIT_SAMPLES:-200} ;;
   extract_resamples)
     python extract_exact_answer.py \
       --model $MODEL \
       --dataset $DATASET \
-      --do_resampling 30 ;;
+      --do_resampling 30 \
+      --resample_seed 42 \
+      --resample_limit_samples 200 ;;
   probe_all_layers)
     python probe_all_layers_and_tokens.py \
       --model $MODEL \

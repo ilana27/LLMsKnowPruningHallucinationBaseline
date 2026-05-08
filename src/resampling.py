@@ -44,7 +44,11 @@ def main(args):
     data = pd.read_csv(model_output_file).reset_index(drop=True)
 
     if args.limit_samples is not None:
-        data = data.sample(args.limit_samples, random_state=args.seed).reset_index(drop=True)
+        data = data.sample(args.limit_samples, random_state=args.seed)
+        sampled_indices = data.index.tolist()
+        data = data.reset_index(drop=True)
+    else:
+        sampled_indices = None
     print(f"Length of data: {len(data)}")
 
     set_seed(args.seed)
@@ -110,6 +114,8 @@ def main(args):
 
     torch.save(all_textual_answers, f"../output/resampling/{MODEL_FRIENDLY_NAMES[args.model]}_{args.dataset}_{args.n_resamples}_textual_answers{args.tag}.pt")
     torch.save(all_input_output_ids, f"../output/resampling/{MODEL_FRIENDLY_NAMES[args.model]}_{args.dataset}_{args.n_resamples}_input_output_ids{args.tag}.pt")
+    if sampled_indices is not None:
+        torch.save(sampled_indices, f"../output/resampling/{MODEL_FRIENDLY_NAMES[args.model]}_{args.dataset}_{args.n_resamples}_sample_indices{args.tag}.pt")
 
     if len(all_exact_answers['exact_answer']) != 0:
         all_exact_answers['exact_answer'] = [[all_exact_answers['exact_answer'][i][j] for i in range(0, args.n_resamples)] for j in
