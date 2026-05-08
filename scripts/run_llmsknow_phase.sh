@@ -49,7 +49,7 @@ case "$PHASE" in
     python extract_exact_answer.py \
       --model $MODEL \
       --dataset $DATASET \
-      --do_resampling ;;
+      --do_resampling 30 ;;
   probe_all_layers)
     python probe_all_layers_and_tokens.py \
       --model $MODEL \
