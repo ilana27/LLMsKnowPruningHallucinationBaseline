@@ -43,7 +43,8 @@ case "$PHASE" in
       --model $MODEL \
       --dataset $DATASET \
       --n_resamples 30 \
-      --seed 42 ;;
+      --seed 42 \
+      --limit_samples 200 ;;
   extract_resamples)
     python extract_exact_answer.py \
       --model $MODEL \
