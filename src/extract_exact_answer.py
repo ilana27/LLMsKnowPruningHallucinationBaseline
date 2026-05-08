@@ -28,12 +28,15 @@ def parse_args():
     parser.add_argument("--model", choices=LIST_OF_MODELS, default='mistralai/Mistral-7B-Instruct-v0.2', help="model which answers are to be extracted")
     parser.add_argument("--resample_seed", type=int, default=None, help="Seed used in resampling.py --seed; needed to recover sampled indices when --limit_samples was used.")
     parser.add_argument("--resample_limit_samples", type=int, default=None, help="Value of --limit_samples passed to resampling.py; used to recover which rows were sampled.")
+    parser.add_argument("--tag", type=str, default="", help="Chunk tag (1-8) for parallel extraction runs; appended to output filename.")
+    parser.add_argument("--n_chunks", type=int, default=0, help="Total number of chunks; 0 means no chunking.")
 
     args = parser.parse_args()
     model_short = MODEL_FRIENDLY_NAMES.get(args.model, args.model.split('/')[-1])
+    run_name = f"{model_short}_{args.dataset}" + (f"_chunk{args.tag}" if args.tag else "")
     wandb.init(
         project="extract_exact_answer",
-        name=f"{model_short}_{args.dataset}",
+        name=run_name,
         config=vars(args)
         )
 
@@ -132,7 +135,7 @@ def main():
     source_file = f"../output/{MODEL_FRIENDLY_NAMES[args.model]}-answers-{args.dataset}.csv"
     resampling_file = f"../output/resampling/{MODEL_FRIENDLY_NAMES[args.model]}_{args.dataset}_{args.do_resampling}_textual_answers.pt"
     if args.do_resampling > 0:
-        destination_file = f"../output/resampling/{MODEL_FRIENDLY_NAMES[args.model]}_{args.dataset}_{args.do_resampling}_exact_answers.pt"
+        destination_file = f"../output/resampling/{MODEL_FRIENDLY_NAMES[args.model]}_{args.dataset}_{args.do_resampling}_exact_answers{args.tag}.pt"
     else:
         destination_file = f"../output/{MODEL_FRIENDLY_NAMES[args.model]}-answers-{args.dataset}.csv"
 
@@ -151,6 +154,15 @@ def main():
                 args.resample_limit_samples, random_state=args.resample_seed
             ).index.tolist()
             model_answers = model_answers.loc[sampled_indices].reset_index(drop=True)
+
+    if args.n_chunks > 0 and args.tag:
+        chunk_idx = int(args.tag) - 1  # tags are 1-indexed
+        chunk_size = 25  # 200 / 8
+        start = chunk_idx * chunk_size
+        end = start + chunk_size
+        model_answers = model_answers.iloc[start:end].reset_index(drop=True)
+        if args.do_resampling > 0:
+            all_resample_answers = [answers[start:end] for answers in all_resample_answers]
 
     exact_answers = []
     valid_lst = []

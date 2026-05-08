@@ -6,7 +6,7 @@
 #SBATCH -N 1
 #SBATCH -c 4
 #SBATCH --mem=64G
-#SBATCH -t 8:00:00
+#SBATCH -t 24:00:00
 #SBATCH --mail-type=END,FAIL
 #SBATCH --mail-user=ilana_nguyen1@brown.edu
 # Job name, output, and error paths are set by submit_llmsknow.sh via sbatch CLI flags.
@@ -16,7 +16,11 @@ BASE=/home/inguyen4/Desktop/research/interp/LLMsKnowPruningHallucinationBaseline
 DATASETS=(triviaqa triviaqa_test
           popqa popqa_test pubqa pubqa_test math math_test)
 
-DATASET=${DATASETS[$((SLURM_ARRAY_TASK_ID - 1))]}
+if [ -n "${DATASET_OVERRIDE}" ]; then
+    DATASET=${DATASET_OVERRIDE}
+else
+    DATASET=${DATASETS[$((SLURM_ARRAY_TASK_ID - 1))]}
+fi
 
 echo "Task ${SLURM_ARRAY_TASK_ID}: dataset=${DATASET} phase=${PHASE}"
 
@@ -69,6 +73,16 @@ case "$PHASE" in
       --do_resampling 30 \
       --resample_seed 42 \
       --resample_limit_samples 200 ;;
+  extract_resamples_parallel)
+    # 8 tasks (1-8), one per 25-sample chunk. Requires --dataset flag in submit script.
+    python extract_exact_answer.py \
+      --model $MODEL \
+      --dataset $DATASET \
+      --do_resampling 30 \
+      --resample_seed 42 \
+      --resample_limit_samples 200 \
+      --tag $SLURM_ARRAY_TASK_ID \
+      --n_chunks 8 ;;
   probe_all_layers)
     python probe_all_layers_and_tokens.py \
       --model $MODEL \

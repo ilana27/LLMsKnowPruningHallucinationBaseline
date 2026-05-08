@@ -8,6 +8,7 @@
 #   bash submit_llmsknow.sh --phase resample
 #   bash submit_llmsknow.sh --phase resample_parallel   # 48-task array (8 datasets × 6 tags)
 #   bash submit_llmsknow.sh --phase extract_resamples
+#   bash submit_llmsknow.sh --phase extract_resamples_parallel --dataset pubqa_test
 #   bash submit_llmsknow.sh --phase probe_all_layers    # defaults to train splits 1,3,5,7
 #   bash submit_llmsknow.sh --phase probe_choose --layer 15 --token last_q_token
 #
@@ -45,21 +46,28 @@ TOKEN="last_q_token"
 THROTTLE=0
 ARRAY_OVERRIDE=""
 LIMIT_SAMPLES=200
+DATASET_OVERRIDE=""
 
 while [[ $# -gt 0 ]]; do
     case "$1" in
-        --phase)          PHASE="$2";          shift 2 ;;
-        --layer)          LAYER="$2";          shift 2 ;;
-        --token)          TOKEN="$2";          shift 2 ;;
-        --throttle)       THROTTLE="$2";       shift 2 ;;
-        --array)          ARRAY_OVERRIDE="$2"; shift 2 ;;
-        --limit_samples)  LIMIT_SAMPLES="$2";  shift 2 ;;
+        --phase)          PHASE="$2";            shift 2 ;;
+        --layer)          LAYER="$2";            shift 2 ;;
+        --token)          TOKEN="$2";            shift 2 ;;
+        --throttle)       THROTTLE="$2";         shift 2 ;;
+        --array)          ARRAY_OVERRIDE="$2";   shift 2 ;;
+        --limit_samples)  LIMIT_SAMPLES="$2";    shift 2 ;;
+        --dataset)        DATASET_OVERRIDE="$2"; shift 2 ;;
         *) echo "Unknown option: $1"; exit 1 ;;
     esac
 done
 
 if [[ -z "$PHASE" ]]; then
     echo "ERROR: --phase is required"
+    exit 1
+fi
+
+if [[ "$PHASE" == "extract_resamples_parallel" && -z "$DATASET_OVERRIDE" ]]; then
+    echo "ERROR: --dataset is required for phase extract_resamples_parallel"
     exit 1
 fi
 
@@ -71,6 +79,8 @@ elif [[ "$PHASE" == "probe_all_layers" ]]; then
     ARRAY_RANGE="1,3,5,7"  # train splits only
 elif [[ "$PHASE" == "resample_parallel" ]]; then
     ARRAY_RANGE="1-$((N_DATASETS * 6))"  # 48 tasks: 8 datasets × 6 tags
+elif [[ "$PHASE" == "extract_resamples_parallel" ]]; then
+    ARRAY_RANGE="1-8"  # 8 chunks of 25 samples each
 else
     ARRAY_RANGE="1-${N_DATASETS}"
 fi
@@ -84,7 +94,7 @@ JOB=$(sbatch --parsable \
     --output="$BASE/logs/${PHASE}_%A_%a.out" \
     --error="$BASE/logs/${PHASE}_%A_%a.err" \
     --array=${ARRAY_RANGE} \
-    --export=ALL,PHASE=${PHASE},LAYER=${LAYER},TOKEN=${TOKEN},LIMIT_SAMPLES=${LIMIT_SAMPLES} \
+    --export=ALL,PHASE=${PHASE},LAYER=${LAYER},TOKEN=${TOKEN},LIMIT_SAMPLES=${LIMIT_SAMPLES},DATASET_OVERRIDE=${DATASET_OVERRIDE} \
     $BASE/scripts/run_llmsknow_phase.sh)
 
 echo "Submitted array job ${JOB} for phase: ${PHASE} (array: ${ARRAY_RANGE})"
