@@ -19,7 +19,7 @@ def parse_args_and_init_wandb():
         description='Probe for hallucinations and create plots')
     parser.add_argument("--model", choices=LIST_OF_MODELS)
     parser.add_argument("--probe_at", choices=LIST_OF_PROBING_LOCATIONS)
-    parser.add_argument("--seed", type=int)
+    parser.add_argument("--seed", type=int, default=42)
     parser.add_argument("--n_samples", default=1000, help="Usually you would limit to 1000 due to memory constraints")
     parser.add_argument("--dataset", choices=LIST_OF_DATASETS,
                         required=True)
