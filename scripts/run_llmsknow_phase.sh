@@ -53,14 +53,15 @@ case "$PHASE" in
     python probe_all_layers_and_tokens.py \
       --model $MODEL \
       --dataset $DATASET \
-      --probe_at mlp_last_layer_only ;;
+      --seed 0 \
+      --probe_at mlp_last_layer_only_input ;;
   probe_choose)
     python probe_choose_answer.py \
       --model $MODEL \
       --dataset $DATASET \
       --layer $LAYER \
       --token $TOKEN \
-      --probe_at mlp_last_layer_only ;;
+      --probe_at mlp ;;
   *)
     echo "Unknown phase: $PHASE"; exit 1 ;;
 esac
