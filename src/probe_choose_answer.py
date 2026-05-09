@@ -158,7 +158,8 @@ def main():
     # directly with textual_answers_raw[j][i], input_output_ids_raw[j][i], and
     # exact_answers_raw[i][j], which all use the same position i.
     seed42_sample = full_csv.sample(n_per_run, random_state=EXTRACT_SEED).iloc[:n_extracted].reset_index(drop=True)
-    model_output_greedy = seed42_sample[seed42_sample['valid_exact_answer'] == 1]
+    # model_output_greedy = seed42_sample[seed42_sample['valid_exact_answer'] == 1]
+    model_output_greedy = seed42_sample
 
     print("Greedy correctness", model_output_greedy.automatic_correctness.mean())
     n_questions = len(model_output_greedy) if args.n_samples is None else args.n_samples
