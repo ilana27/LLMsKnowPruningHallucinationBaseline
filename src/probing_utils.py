@@ -149,7 +149,7 @@ def get_indices_of_exact_answer(tokenizer, input_output_ids, exact_answer, model
     if exact_answer_index == -1:
         print("############ ERROR")
         print(exact_answer, "#", full_question_answer)
-    assert(exact_answer_index != -1)
+        return None
     true_exact_answer = full_question_answer[exact_answer_index:exact_answer_index + len(exact_answer)]
     assert true_exact_answer in full_question_answer
 
@@ -181,6 +181,10 @@ def get_token_index(token, tokenizer, question, model_name, full_answer_tokenize
                 exact_tokens_dict[question] = t
             else:
                 t = exact_tokens_dict[question]
+
+            if t is None:
+                q_length = len(tokenize(question, tokenizer, model_name)[0])
+                return q_length - 1  # fall back to last_q_token
 
             if token == 'exact_answer_last_token':
                 t = min(len(full_answer_tokenized) - 1, t[-1])

@@ -88,7 +88,7 @@ def get_probe_pred_per_resample(model, tokenizer, clf, layer, token, model_outpu
         correct_answers = model_output_greedy.correct_answer
 
         X = \
-            extract_internal_reps_specific_layer_and_token(model, tokenizer, questions[:limit_samples],
+            extract_internal_reps_specific_layer_and_token(model, tokenizer, questions.iloc[:limit_samples],
                                                            input_output_ids[:limit_samples], probe_at, model_name,
                                                            layer, token, exact_answer[:limit_samples],
                                                            validity_of_exact_answer[:limit_samples],
