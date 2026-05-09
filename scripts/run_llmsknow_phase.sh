@@ -105,8 +105,6 @@ case "$PHASE" in
       --layer $LAYER \
       --token $TOKEN \
       --probe_at mlp \
-      --resample_seed 42 \
-      --resample_limit_samples ${LIMIT_SAMPLES:-200} \
       --seeds 0 5 26 42 63 ;;
   *)
     echo "Unknown phase: $PHASE"; exit 1 ;;
