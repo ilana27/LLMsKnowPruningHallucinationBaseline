@@ -1,4 +1,5 @@
 import argparse
+import os
 import pickle
 
 import numpy as np
@@ -140,6 +141,10 @@ def main():
 
     model_output_file = f"../output/{MODEL_FRIENDLY_NAMES[args.model]}-answers-{args.dataset}.csv"
     model_output_greedy = pd.read_csv(model_output_file).reset_index(drop=True)
+    sample_indices_file = f"../output/resampling/{MODEL_FRIENDLY_NAMES[args.model]}_{args.dataset}_{args.n_resamples}_sample_indices.pt"
+    if os.path.exists(sample_indices_file):
+        sampled_indices = torch.load(sample_indices_file)
+        model_output_greedy = model_output_greedy.loc[sampled_indices].reset_index(drop=True)
     model_output_greedy = model_output_greedy[model_output_greedy['valid_exact_answer'] == 1]
 
     #temp
