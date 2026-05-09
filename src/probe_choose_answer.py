@@ -87,12 +87,13 @@ def get_probe_pred_per_resample(model, tokenizer, clf, layer, token, model_outpu
         questions = model_output_greedy.question
         correct_answers = model_output_greedy.correct_answer
 
-        X = \
+        X, exact_answer_found_mask = \
             extract_internal_reps_specific_layer_and_token(model, tokenizer, questions.iloc[:limit_samples],
                                                            input_output_ids[:limit_samples], probe_at, model_name,
                                                            layer, token, exact_answer[:limit_samples],
                                                            validity_of_exact_answer[:limit_samples],
-                                                           use_dict_for_tokens=False
+                                                           use_dict_for_tokens=False,
+                                                           return_valid_mask=True
                                                            )
 
         if 'incorrect_answer' in model_output_greedy:
@@ -103,7 +104,9 @@ def get_probe_pred_per_resample(model, tokenizer, clf, layer, token, model_outpu
             correctness = compute_correctness_fn(textual_answers[:limit_samples], correct_answers.to_numpy())[
                 'correctness']
         correctness = np.array(correctness)
-        probe_preds_per_resample.append(clf.predict_proba(X))
+        probe_proba = clf.predict_proba(X)
+        probe_proba[~np.array(exact_answer_found_mask), 1] = 0  # don't select resamples where exact answer wasn't findable
+        probe_preds_per_resample.append(probe_proba)
         correctness_per_resample.append(correctness)
         metrics_per_resample.append(compute_metrics_probing(clf, X, correctness))
     return probe_preds_per_resample, correctness_per_resample, metrics_per_resample

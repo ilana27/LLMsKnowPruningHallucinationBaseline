@@ -111,8 +111,8 @@ def extract_exact_answer(model, tokenizer, correctness, question, model_answer, 
                 exact_answer = exact_answer.replace(".</s>", "").replace("</s>", "").split('\n')[0].split("(")[
                     0].strip().strip(".")
             elif 'llama' in model_name.lower():
-                exact_answer = exact_answer.replace(".<|eot_id|>", "").replace("<|eot_id|>", "").replace("Exact answer:","").split('\n')[-1].split("(")[
-                    0].strip().strip(".")
+                lines = [l for l in exact_answer.replace(".<|eot_id|>", "").replace("<|eot_id|>", "").replace("Exact answer:", "").split('\n') if l.strip()]
+                exact_answer = (lines[0].split("(")[0].strip().strip(".") if lines else "")
             else:
                 print("Model is not supported. Exisitng...")
                 exit(1)

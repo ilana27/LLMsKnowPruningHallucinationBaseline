@@ -183,8 +183,7 @@ def get_token_index(token, tokenizer, question, model_name, full_answer_tokenize
                 t = exact_tokens_dict[question]
 
             if t is None:
-                q_length = len(tokenize(question, tokenizer, model_name)[0])
-                return q_length - 1  # fall back to last_q_token
+                return None  # exact answer not findable; caller decides fallback
 
             if token == 'exact_answer_last_token':
                 t = min(len(full_answer_tokenized) - 1, t[-1])
@@ -282,8 +281,10 @@ def get_attention_output(model, ret, layers_to_trace, probe_at):
 
 def extract_internal_reps_specific_layer_and_token(model, tokenizer, prompts, input_output_ids_lst,
                                                    probe_at, model_name, layer, token, exact_answers,
-                                                   exact_answers_valid, use_dict_for_tokens=False):
+                                                   exact_answers_valid, use_dict_for_tokens=False,
+                                                   return_valid_mask=False):
     all_reps = []
+    valid_mask = []
     length = len(input_output_ids_lst)
     print(
         f"Extracting internal reps from layer {layer} and token {token} from {length} textual inputs...")
@@ -293,9 +294,17 @@ def extract_internal_reps_specific_layer_and_token(model, tokenizer, prompts, in
         output = extract_internal_reps_single_sample(model, input_output_ids, probe_at, model_name)
         t = get_token_index(token, tokenizer, prompt, model_name, input_output_ids,
                             exact_answer, exact_answer_valid, use_dict=use_dict_for_tokens)
+        if t is None:
+            valid_mask.append(False)
+            q_length = len(tokenize(prompt, tokenizer, model_name)[0])
+            t = q_length - 1  # use last_q_token as dummy rep
+        else:
+            valid_mask.append(True)
         rep = output[layer][t].float().numpy()
         all_reps.append(rep)
 
+    if return_valid_mask:
+        return all_reps, valid_mask
     return all_reps
 
 
