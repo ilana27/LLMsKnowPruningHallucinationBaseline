@@ -149,7 +149,7 @@ def get_indices_of_exact_answer(tokenizer, input_output_ids, exact_answer, model
     if exact_answer_index == -1:
         print("############ ERROR")
         print(exact_answer, "#", full_question_answer)
-        return None
+    assert(exact_answer_index != -1)
     true_exact_answer = full_question_answer[exact_answer_index:exact_answer_index + len(exact_answer)]
     assert true_exact_answer in full_question_answer
 
@@ -181,9 +181,6 @@ def get_token_index(token, tokenizer, question, model_name, full_answer_tokenize
                 exact_tokens_dict[question] = t
             else:
                 t = exact_tokens_dict[question]
-
-            if t is None:
-                return None  # exact answer not findable; caller decides fallback
 
             if token == 'exact_answer_last_token':
                 t = min(len(full_answer_tokenized) - 1, t[-1])
@@ -281,10 +278,8 @@ def get_attention_output(model, ret, layers_to_trace, probe_at):
 
 def extract_internal_reps_specific_layer_and_token(model, tokenizer, prompts, input_output_ids_lst,
                                                    probe_at, model_name, layer, token, exact_answers,
-                                                   exact_answers_valid, use_dict_for_tokens=False,
-                                                   return_valid_mask=False):
+                                                   exact_answers_valid, use_dict_for_tokens=False):
     all_reps = []
-    valid_mask = []
     length = len(input_output_ids_lst)
     print(
         f"Extracting internal reps from layer {layer} and token {token} from {length} textual inputs...")
@@ -294,17 +289,9 @@ def extract_internal_reps_specific_layer_and_token(model, tokenizer, prompts, in
         output = extract_internal_reps_single_sample(model, input_output_ids, probe_at, model_name)
         t = get_token_index(token, tokenizer, prompt, model_name, input_output_ids,
                             exact_answer, exact_answer_valid, use_dict=use_dict_for_tokens)
-        if t is None:
-            valid_mask.append(False)
-            q_length = len(tokenize(prompt, tokenizer, model_name)[0])
-            t = q_length - 1  # use last_q_token as dummy rep
-        else:
-            valid_mask.append(True)
         rep = output[layer][t].float().numpy()
         all_reps.append(rep)
 
-    if return_valid_mask:
-        return all_reps, valid_mask
     return all_reps
 
 
@@ -380,8 +367,7 @@ def probe_specific_layer_token(extracted_embeddings_train, extracted_embeddings_
 
 
 def compile_probing_indices(data, n_samples, seed, n_validation_samples=0):
-    if isinstance(n_samples, str) and n_samples != 'all':
-        n_samples = int(n_samples)
+    n_samples = eval(n_samples)
     indices = np.arange(len(data))
 
     if n_validation_samples > 0:

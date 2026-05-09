@@ -1,5 +1,4 @@
 import argparse
-import os
 import pickle
 
 import numpy as np
@@ -29,8 +28,6 @@ def parse_args_and_init_wandb():
     parser.add_argument('--seeds', nargs='+', type=int)
     parser.add_argument("--n_resamples", type=int, default=30)
     parser.add_argument("--n_samples", type=int, default=None, help="In case you want to use a subset of the data for the analysis")
-    parser.add_argument("--resample_seed", type=int, default=None, help="Seed passed to resampling.py --seed; used to recover the sampled subset when --resample_limit_samples is set")
-    parser.add_argument("--resample_limit_samples", type=int, default=None, help="Value of --limit_samples passed to resampling.py; used to recover which rows were sampled")
     args = parser.parse_args()
 
     model_short = MODEL_FRIENDLY_NAMES.get(args.model, args.model.split('/')[-1])
@@ -87,13 +84,12 @@ def get_probe_pred_per_resample(model, tokenizer, clf, layer, token, model_outpu
         questions = model_output_greedy.question
         correct_answers = model_output_greedy.correct_answer
 
-        X, exact_answer_found_mask = \
-            extract_internal_reps_specific_layer_and_token(model, tokenizer, questions.iloc[:limit_samples],
+        X = \
+            extract_internal_reps_specific_layer_and_token(model, tokenizer, questions[:limit_samples],
                                                            input_output_ids[:limit_samples], probe_at, model_name,
                                                            layer, token, exact_answer[:limit_samples],
                                                            validity_of_exact_answer[:limit_samples],
-                                                           use_dict_for_tokens=False,
-                                                           return_valid_mask=True
+                                                           use_dict_for_tokens=False
                                                            )
 
         if 'incorrect_answer' in model_output_greedy:
@@ -104,9 +100,7 @@ def get_probe_pred_per_resample(model, tokenizer, clf, layer, token, model_outpu
             correctness = compute_correctness_fn(textual_answers[:limit_samples], correct_answers.to_numpy())[
                 'correctness']
         correctness = np.array(correctness)
-        probe_proba = clf.predict_proba(X)
-        probe_proba[~np.array(exact_answer_found_mask), 1] = 0  # don't select resamples where exact answer wasn't findable
-        probe_preds_per_resample.append(probe_proba)
+        probe_preds_per_resample.append(clf.predict_proba(X))
         correctness_per_resample.append(correctness)
         metrics_per_resample.append(compute_metrics_probing(clf, X, correctness))
     return probe_preds_per_resample, correctness_per_resample, metrics_per_resample
@@ -146,25 +140,13 @@ def main():
 
     model_output_file = f"../output/{MODEL_FRIENDLY_NAMES[args.model]}-answers-{args.dataset}.csv"
     model_output_greedy = pd.read_csv(model_output_file).reset_index(drop=True)
-
-    textual_answers = torch.load(
-        f"../output/resampling/{MODEL_FRIENDLY_NAMES[args.model]}_{args.dataset}_{args.n_resamples}_textual_answers.pt")
-    n_resampled = len(textual_answers[0])
-    if len(model_output_greedy) != n_resampled:
-        assert args.resample_seed is not None and args.resample_limit_samples is not None, (
-            "Resampling was run with --limit_samples; pass --resample_seed and "
-            "--resample_limit_samples to recover the sampled subset."
-        )
-        sampled_indices = model_output_greedy.sample(
-            args.resample_limit_samples, random_state=args.resample_seed
-        ).index.tolist()
-        model_output_greedy = model_output_greedy.loc[sampled_indices].reset_index(drop=True)
-
-    # model_output_greedy = model_output_greedy[model_output_greedy['valid_exact_answer'] == 1]
+    model_output_greedy = model_output_greedy[model_output_greedy['valid_exact_answer'] == 1]
 
     #temp
     print("Greedy correctness", model_output_greedy.automatic_correctness.mean())
 
+    textual_answers = torch.load(
+        f"../output/resampling/{MODEL_FRIENDLY_NAMES[args.model]}_{args.dataset}_{args.n_resamples}_textual_answers.pt")
     textual_answers = [[textual_answers[j][i] for i in model_output_greedy.index] for j in range(args.n_resamples)]
     n_questions = len(model_output_greedy) if args.n_samples is None else args.n_samples
 
