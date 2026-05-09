@@ -14,6 +14,8 @@ from probing_utils import load_model_and_validate_gpu, extract_internal_reps_spe
     LIST_OF_MODELS, LIST_OF_PROBING_LOCATIONS, LIST_OF_TEST_DATASETS
 from resamples_utils import get_error_stats, get_types_of_mistakes
 
+EXTRACT_SEED = 42
+
 
 def parse_args_and_init_wandb():
     parser = argparse.ArgumentParser(
@@ -139,32 +141,41 @@ def main():
     model, tokenizer = load_model_and_validate_gpu(args.model)
 
     model_output_file = f"../output/{MODEL_FRIENDLY_NAMES[args.model]}-answers-{args.dataset}.csv"
-    model_output_greedy = pd.read_csv(model_output_file).reset_index(drop=True)
-    model_output_greedy = model_output_greedy[model_output_greedy['valid_exact_answer'] == 1]
+    full_csv = pd.read_csv(model_output_file).reset_index(drop=True)
 
-    #temp
-    print("Greedy correctness", model_output_greedy.automatic_correctness.mean())
-
-    textual_answers = torch.load(
+    textual_answers_raw = torch.load(
         f"../output/resampling/{MODEL_FRIENDLY_NAMES[args.model]}_{args.dataset}_{args.n_resamples}_textual_answers.pt")
-    textual_answers = [[textual_answers[j][i] for i in model_output_greedy.index] for j in range(args.n_resamples)]
+    input_output_ids_raw = torch.load(
+        f"../output/resampling/{MODEL_FRIENDLY_NAMES[args.model]}_{args.dataset}_{args.n_resamples}_input_output_ids.pt")
+    exact_answers_raw = torch.load(
+        f"../output/resampling/{MODEL_FRIENDLY_NAMES[args.model]}_{args.dataset}_{args.n_resamples}_exact_answers.pt")
+
+    n_per_run = len(textual_answers_raw[0])
+    n_extracted = len(exact_answers_raw['exact_answer'])
+
+    # Reconstruct the n_extracted examples with pre-extracted exact answers.
+    # seed42_sample has a 0-based positional index (0..n_extracted-1) that aligns
+    # directly with textual_answers_raw[j][i], input_output_ids_raw[j][i], and
+    # exact_answers_raw[i][j], which all use the same position i.
+    seed42_sample = full_csv.sample(n_per_run, random_state=EXTRACT_SEED).iloc[:n_extracted].reset_index(drop=True)
+    model_output_greedy = seed42_sample[seed42_sample['valid_exact_answer'] == 1]
+
+    print("Greedy correctness", model_output_greedy.automatic_correctness.mean())
     n_questions = len(model_output_greedy) if args.n_samples is None else args.n_samples
 
-    exact_answers_and_validity = torch.load(
-        f"../output/resampling/{MODEL_FRIENDLY_NAMES[args.model]}_{args.dataset}_{args.n_resamples}_exact_answers.pt")
-    exact_answers_and_validity['exact_answer'] = [[exact_answers_and_validity['exact_answer'][i][j] for j in range(0, args.n_resamples)] for i in model_output_greedy.index]
-    exact_answers_and_validity['valid_exact_answer'] = [[exact_answers_and_validity['valid_exact_answer'][i][j] for j in range(0, args.n_resamples)] for i in model_output_greedy.index]
+    # model_output_greedy.index is a subset of 0..n_extracted-1, safe to index into *_raw
+    textual_answers = [[textual_answers_raw[j][i] for i in model_output_greedy.index] for j in range(args.n_resamples)]
+    input_output_ids = [[input_output_ids_raw[j][i] for i in model_output_greedy.index] for j in range(args.n_resamples)]
+
+    exact_answers_and_validity = {
+        'exact_answer': [[exact_answers_raw['exact_answer'][i][j] for j in range(args.n_resamples)] for i in model_output_greedy.index],
+        'valid_exact_answer': [[exact_answers_raw['valid_exact_answer'][i][j] for j in range(args.n_resamples)] for i in model_output_greedy.index],
+    }
 
     exact_answers = exact_answers_and_validity['exact_answer']
     valid_exact_answers = exact_answers_and_validity['valid_exact_answer']
-    exact_answers_per_resample = [[exact_answers[i][j] for i in range(0, n_questions)] for j in
-                                      range(0, args.n_resamples)]
-    exact_answers_validity_per_resample = [[valid_exact_answers[i][j] for i in range(0, n_questions)] for j in
-                                               range(0, args.n_resamples)]
-
-    input_output_ids = torch.load(
-        f"../output/resampling/{MODEL_FRIENDLY_NAMES[args.model]}_{args.dataset}_{args.n_resamples}_input_output_ids.pt")
-    input_output_ids = [[input_output_ids[j][i] for i in model_output_greedy.index] for j in range(args.n_resamples)]
+    exact_answers_per_resample = [[exact_answers[i][j] for i in range(n_questions)] for j in range(args.n_resamples)]
+    exact_answers_validity_per_resample = [[valid_exact_answers[i][j] for i in range(n_questions)] for j in range(args.n_resamples)]
 
     probe_checkpoint = f'../checkpoints/clf_{MODEL_FRIENDLY_NAMES[args.model]}_{args.dataset.replace("_test", "")}_layer-{args.layer}_token-{args.token}.pkl'
     with open(probe_checkpoint, 'rb') as f:
