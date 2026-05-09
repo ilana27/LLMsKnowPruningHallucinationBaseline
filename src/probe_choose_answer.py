@@ -160,7 +160,7 @@ def main():
         ).index.tolist()
         model_output_greedy = model_output_greedy.loc[sampled_indices].reset_index(drop=True)
 
-    model_output_greedy = model_output_greedy[model_output_greedy['valid_exact_answer'] == 1]
+    # model_output_greedy = model_output_greedy[model_output_greedy['valid_exact_answer'] == 1]
 
     #temp
     print("Greedy correctness", model_output_greedy.automatic_correctness.mean())
