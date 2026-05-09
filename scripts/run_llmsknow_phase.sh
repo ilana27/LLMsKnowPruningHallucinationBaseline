@@ -89,13 +89,24 @@ case "$PHASE" in
       --dataset $DATASET \
       --seed 0 \
       --probe_at mlp_last_layer_only_input ;;
+  probe_train)
+    python probe.py \
+      --model $MODEL \
+      --dataset $DATASET \
+      --layer $LAYER \
+      --token $TOKEN \
+      --probe_at mlp \
+      --save_clf \
+      --seeds 0 ;;
   probe_choose)
     python probe_choose_answer.py \
       --model $MODEL \
       --dataset $DATASET \
       --layer $LAYER \
       --token $TOKEN \
-      --probe_at mlp ;;
+      --probe_at mlp \
+      --resample_seed 42 \
+      --resample_limit_samples ${LIMIT_SAMPLES:-200} ;;
   *)
     echo "Unknown phase: $PHASE"; exit 1 ;;
 esac

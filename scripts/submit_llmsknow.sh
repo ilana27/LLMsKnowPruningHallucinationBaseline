@@ -10,6 +10,7 @@
 #   bash submit_llmsknow.sh --phase extract_resamples
 #   bash submit_llmsknow.sh --phase extract_resamples_parallel --dataset pubqa_test
 #   bash submit_llmsknow.sh --phase probe_all_layers    # defaults to train splits 1,3,5,7
+#   bash submit_llmsknow.sh --phase probe_train --array 3 --layer 20 --token exact_answer_last_token
 #   bash submit_llmsknow.sh --phase probe_choose --layer 15 --token last_q_token
 #
 # triviaqa + popqa train, 8000 samples
@@ -75,7 +76,7 @@ N_DATASETS=8
 
 if [[ -n "$ARRAY_OVERRIDE" ]]; then
     ARRAY_RANGE="$ARRAY_OVERRIDE"
-elif [[ "$PHASE" == "probe_all_layers" ]]; then
+elif [[ "$PHASE" == "probe_all_layers" || "$PHASE" == "probe_train" ]]; then
     ARRAY_RANGE="1,3,5,7"  # train splits only
 elif [[ "$PHASE" == "resample_parallel" ]]; then
     ARRAY_RANGE="1-$((N_DATASETS * 6))"  # 48 tasks: 8 datasets × 6 tags
