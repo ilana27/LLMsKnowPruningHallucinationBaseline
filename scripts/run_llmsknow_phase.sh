@@ -1,7 +1,7 @@
 #!/bin/bash
 #SBATCH --partition=gpus
 #SBATCH --gres=gpu:1
-#SBATCH --constraint="l40|l40s|rtx_a6000"
+#SBATCH --constraint="rtx_a6000|l40|l40s"
 #SBATCH -n 1
 #SBATCH -N 1
 #SBATCH -c 4
