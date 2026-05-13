@@ -47,17 +47,19 @@ TOKEN="last_q_token"
 THROTTLE=0
 ARRAY_OVERRIDE=""
 LIMIT_SAMPLES=200
+RESAMPLE_LIMIT_SAMPLES=200
 DATASET_OVERRIDE=""
 
 while [[ $# -gt 0 ]]; do
     case "$1" in
-        --phase)          PHASE="$2";            shift 2 ;;
-        --layer)          LAYER="$2";            shift 2 ;;
-        --token)          TOKEN="$2";            shift 2 ;;
-        --throttle)       THROTTLE="$2";         shift 2 ;;
-        --array)          ARRAY_OVERRIDE="$2";   shift 2 ;;
-        --limit_samples)  LIMIT_SAMPLES="$2";    shift 2 ;;
-        --dataset)        DATASET_OVERRIDE="$2"; shift 2 ;;
+        --phase)                  PHASE="$2";                   shift 2 ;;
+        --layer)                  LAYER="$2";                   shift 2 ;;
+        --token)                  TOKEN="$2";                   shift 2 ;;
+        --throttle)               THROTTLE="$2";                shift 2 ;;
+        --array)                  ARRAY_OVERRIDE="$2";          shift 2 ;;
+        --limit_samples)          LIMIT_SAMPLES="$2";           shift 2 ;;
+        --resample_limit_samples) RESAMPLE_LIMIT_SAMPLES="$2";  shift 2 ;;
+        --dataset)                DATASET_OVERRIDE="$2";        shift 2 ;;
         *) echo "Unknown option: $1"; exit 1 ;;
     esac
 done
@@ -95,7 +97,7 @@ JOB=$(sbatch --parsable \
     --output="$BASE/logs/${PHASE}_%A_%a.out" \
     --error="$BASE/logs/${PHASE}_%A_%a.err" \
     --array=${ARRAY_RANGE} \
-    --export=ALL,PHASE=${PHASE},LAYER=${LAYER},TOKEN=${TOKEN},LIMIT_SAMPLES=${LIMIT_SAMPLES},DATASET_OVERRIDE=${DATASET_OVERRIDE} \
+    --export=ALL,PHASE=${PHASE},LAYER=${LAYER},TOKEN=${TOKEN},LIMIT_SAMPLES=${LIMIT_SAMPLES},RESAMPLE_LIMIT_SAMPLES=${RESAMPLE_LIMIT_SAMPLES},DATASET_OVERRIDE=${DATASET_OVERRIDE},WANDB_MODE=offline \
     $BASE/scripts/run_llmsknow_phase.sh)
 
 echo "Submitted array job ${JOB} for phase: ${PHASE} (array: ${ARRAY_RANGE})"

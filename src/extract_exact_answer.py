@@ -157,7 +157,7 @@ def main():
 
     if args.n_chunks > 0 and args.tag:
         chunk_idx = int(args.tag) - 1  # tags are 1-indexed
-        chunk_size = 25  # 200 / 8
+        chunk_size = len(model_answers) // args.n_chunks
         start = chunk_idx * chunk_size
         end = start + chunk_size
         model_answers = model_answers.iloc[start:end].reset_index(drop=True)

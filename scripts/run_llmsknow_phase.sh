@@ -72,15 +72,15 @@ case "$PHASE" in
       --dataset $DATASET \
       --do_resampling 30 \
       --resample_seed 42 \
-      --resample_limit_samples 200 ;;
+      --resample_limit_samples ${RESAMPLE_LIMIT_SAMPLES:-200} ;;
   extract_resamples_parallel)
-    # 8 tasks (1-8), one per 25-sample chunk. Requires --dataset flag in submit script.
+    # 8 tasks (1-8), chunk size is dynamic (resample_limit_samples / n_chunks). Requires --dataset flag in submit script.
     python extract_exact_answer.py \
       --model $MODEL \
       --dataset $DATASET \
       --do_resampling 30 \
       --resample_seed 42 \
-      --resample_limit_samples 200 \
+      --resample_limit_samples ${RESAMPLE_LIMIT_SAMPLES:-200} \
       --tag $SLURM_ARRAY_TASK_ID \
       --n_chunks 8 ;;
   probe_all_layers)

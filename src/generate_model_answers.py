@@ -1,6 +1,8 @@
 import argparse
+import glob
 import json
 import os
+import shutil
 
 import numpy as np
 import pandas as pd
@@ -10,6 +12,8 @@ from datasets import load_dataset
 from sklearn.model_selection import train_test_split
 from tqdm import tqdm
 from transformers import set_seed
+
+CHUNK_SIZE = 500
 
 from compute_correctness import compute_correctness
 from probing_utils import load_model_and_validate_gpu, tokenize, generate, LIST_OF_DATASETS, LIST_OF_TEST_DATASETS, \
@@ -191,33 +195,54 @@ def prepare_winogrande(model_name, all_questions, labels):
         prompts.append(f'''Question: {q}\nAnswer:''')
     return prompts
 
+def _save_chunk(chunk_dir, chunk_start, answers, input_output_ids, scores, output_ids):
+    os.makedirs(chunk_dir, exist_ok=True)
+    torch.save(
+        {"answers": answers, "input_output_ids": input_output_ids,
+         "scores": scores, "output_ids": output_ids},
+        os.path.join(chunk_dir, f"chunk_{chunk_start:07d}.pt"),
+    )
+    # Write lightweight progress counter so resume doesn't need to load scores
+    with open(os.path.join(chunk_dir, "n_done.txt"), "w") as f:
+        f.write(str(chunk_start + len(answers)))
+
+
 def generate_model_answers(data, model, tokenizer, device, model_name, do_sample=False, output_scores=False,
-                           temperature=1.0,
-                           top_p=1.0, max_new_tokens=100, stop_token_id=None, verbose=False):
-
+                           temperature=1.0, top_p=1.0, max_new_tokens=100, stop_token_id=None, verbose=False,
+                           chunk_dir=None, start_idx=0):
     all_textual_answers = []
-    all_scores = []
     all_input_output_ids = []
-    all_output_ids = []
+    chunk_scores = []
+    chunk_output_ids = []
+    chunk_answers = []
+    chunk_ioids = []
+    chunk_start = start_idx
     counter = 0
-    for prompt in tqdm(data):
 
+    for i, prompt in enumerate(tqdm(data)):
         model_input = tokenize(prompt, tokenizer, model_name).to(device)
 
         with torch.no_grad():
-
-            model_output = generate(model_input, model, model_name, do_sample, output_scores, max_new_tokens=max_new_tokens,
-                                    top_p=top_p, temperature=temperature, stop_token_id=stop_token_id, tokenizer=tokenizer)
+            model_output = generate(model_input, model, model_name, do_sample, output_scores,
+                                    max_new_tokens=max_new_tokens, top_p=top_p, temperature=temperature,
+                                    stop_token_id=stop_token_id, tokenizer=tokenizer)
 
         answer = tokenizer.decode(model_output['sequences'][0][len(model_input[0]):])
-        if output_scores:
-            scores = torch.concatenate(model_output['scores']).cpu()  # shape = (new_tokens, len(vocab))
-            all_scores.append(scores)
-            output_ids = model_output['sequences'][0][len(model_input[0]):].cpu()
-            all_output_ids.append(output_ids)
+        ioid = model_output['sequences'][0].cpu()
 
+        if output_scores:
+            chunk_scores.append(torch.concatenate(model_output['scores']).cpu())
+            chunk_output_ids.append(model_output['sequences'][0][len(model_input[0]):].cpu())
+
+        chunk_answers.append(answer)
+        chunk_ioids.append(ioid)
         all_textual_answers.append(answer)
-        all_input_output_ids.append(model_output['sequences'][0].cpu())
+        all_input_output_ids.append(ioid)
+
+        if chunk_dir and len(chunk_answers) >= CHUNK_SIZE:
+            _save_chunk(chunk_dir, chunk_start, chunk_answers, chunk_ioids, chunk_scores, chunk_output_ids)
+            chunk_answers, chunk_ioids, chunk_scores, chunk_output_ids = [], [], [], []
+            chunk_start = start_idx + i + 1
 
         if verbose:
             if counter % 100 == 0:
@@ -226,7 +251,13 @@ def generate_model_answers(data, model, tokenizer, device, model_name, do_sample
                 print(f"Answer: {answer}")
             counter += 1
 
-    return all_textual_answers, all_input_output_ids, all_scores, all_output_ids
+    if chunk_dir and chunk_answers:
+        _save_chunk(chunk_dir, chunk_start, chunk_answers, chunk_ioids, chunk_scores, chunk_output_ids)
+
+    # When chunk_dir is set, scores live on disk; return empty lists to avoid OOM
+    if chunk_dir:
+        return all_textual_answers, all_input_output_ids, [], []
+    return all_textual_answers, all_input_output_ids, chunk_scores, chunk_output_ids
 
 
 def init_wandb(args):
@@ -477,6 +508,17 @@ def load_data(dataset_name):
         raise TypeError("data type is not supported")
     return all_questions, context, labels, max_new_tokens, origin, preprocess_fn, stereotype, type_, wrong_labels
 
+def _load_chunks_lightweight(chunk_dir):
+    """Load only answers and input_output_ids (small). Scores stay on disk."""
+    chunk_files = sorted(glob.glob(os.path.join(chunk_dir, "chunk_*.pt")))
+    all_answers, all_ioids = [], []
+    for cf in chunk_files:
+        chunk = torch.load(cf, weights_only=False)
+        all_answers.extend(chunk["answers"])
+        all_ioids.extend(chunk["input_output_ids"])
+    return all_answers, all_ioids
+
+
 def main():
     args = parse_args()
     init_wandb(args)
@@ -494,9 +536,11 @@ def main():
     if not os.path.exists('../output'):
         os.makedirs('../output')
 
-    file_path_output_ids = f"../output/{MODEL_FRIENDLY_NAMES[args.model]}-input_output_ids-{args.dataset}.pt"
-    file_path_scores = f"../output/{MODEL_FRIENDLY_NAMES[args.model]}-scores-{args.dataset}.pt"
-    file_path_answers = f"../output/{MODEL_FRIENDLY_NAMES[args.model]}-answers-{args.dataset}.csv"
+    model_short = MODEL_FRIENDLY_NAMES[args.model]
+    file_path_output_ids = f"../output/{model_short}-input_output_ids-{args.dataset}.pt"
+    file_path_scores = f"../output/{model_short}-scores-{args.dataset}.pt"
+    file_path_answers = f"../output/{model_short}-answers-{args.dataset}.csv"
+    chunk_dir = f"../output/{model_short}-chunks-{args.dataset}"
 
     if dataset_size:
         all_questions = all_questions[:dataset_size]
@@ -505,6 +549,14 @@ def main():
             origin = origin[:dataset_size]
         if 'winogrande' in args.dataset:
             wrong_labels = wrong_labels[:dataset_size]
+
+    # Determine resume point — read lightweight counter, no score loading
+    n_done = 0
+    n_done_file = os.path.join(chunk_dir, "n_done.txt")
+    if os.path.exists(n_done_file):
+        with open(n_done_file) as f:
+            n_done = int(f.read().strip())
+        print(f"Resuming from example {n_done} / {len(all_questions)}")
 
     output_csv = {}
     if preprocess_fn:
@@ -519,16 +571,18 @@ def main():
         else:
             all_questions = preprocess_fn(args.model, all_questions, labels)
 
-    model_answers, input_output_ids, all_scores, all_output_ids = generate_model_answers(all_questions, model,
-                                                                                         tokenizer, device, args.model,
-                                                                                         output_scores=True, max_new_tokens=max_new_tokens,
-                                                                                         stop_token_id=stop_token_id)
+    generate_model_answers(all_questions[n_done:], model, tokenizer, device, args.model,
+                           output_scores=True, max_new_tokens=max_new_tokens, stop_token_id=stop_token_id,
+                           chunk_dir=chunk_dir, start_idx=n_done)
+
+    # Consolidate answers and input_output_ids (small — safe to load all at once)
+    model_answers, input_output_ids = _load_chunks_lightweight(chunk_dir)
 
     res = compute_correctness(all_questions, args.dataset, args.model, labels, model, model_answers, tokenizer, wrong_labels)
     correctness = res['correctness']
 
     acc = np.mean(correctness)
-    wandb.summary[f'acc'] = acc
+    wandb.summary['acc'] = acc
     print(f"Accuracy:", acc)
 
     output_csv['question'] = all_questions
@@ -548,16 +602,29 @@ def main():
         output_csv['origin'] = origin
 
     print("Saving answers to ", file_path_answers)
-
     with open(file_path_answers, 'w', encoding='utf-8', errors='replace', newline='') as f:
         pd.DataFrame.from_dict(output_csv).to_csv(f)
 
     print("Saving input output ids to ", file_path_output_ids)
     torch.save(input_output_ids, file_path_output_ids)
 
-    print("Saving input output ids to ", file_path_scores)
-    torch.save({"all_scores": all_scores,
-                "all_output_ids": all_output_ids}, file_path_scores)
+    # Consolidate scores — NOTE: this loads all score tensors into RAM at once.
+    # For large datasets (e.g. 10K samples at 128K vocab) this can exceed available RAM.
+    # If it fails, chunk files are preserved in chunk_dir and can be consolidated later.
+    print("Saving scores to ", file_path_scores)
+    chunk_files = sorted(glob.glob(os.path.join(chunk_dir, "chunk_*.pt")))
+    try:
+        all_scores_out, all_output_ids_out = [], []
+        for cf in chunk_files:
+            chunk = torch.load(cf, weights_only=False)
+            all_scores_out.extend(chunk["scores"])
+            all_output_ids_out.extend(chunk["output_ids"])
+        torch.save({"all_scores": all_scores_out, "all_output_ids": all_output_ids_out}, file_path_scores)
+        del all_scores_out, all_output_ids_out
+        shutil.rmtree(chunk_dir, ignore_errors=True)
+    except MemoryError:
+        print(f"WARNING: OOM consolidating scores. Chunk files preserved in {chunk_dir}. "
+              "Run consolidate_scores.py separately to merge them.")
 
 if __name__ == "__main__":
     main()
