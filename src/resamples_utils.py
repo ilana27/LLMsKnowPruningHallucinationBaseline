@@ -29,25 +29,31 @@ def get_error_stats(textual_answers, exact_answers, model_output_greedy, compute
                 others_idx.append(retry_idx)
                 others.append(retry_ans)
 
-        for retry_idx in others_idx:
+        others_full_answers = []
+        for i, retry_idx in enumerate(others_idx):
             if not exact_answers['valid_exact_answer'][q_idx][retry_idx]:
                 continue
             exact_answer = exact_answers['exact_answer'][q_idx][retry_idx]
             others_exact_answers.append(exact_answer)
+            others_full_answers.append(others[i])
 
         ctr_other_exact_answers = defaultdict(int)
-        for ans in others_exact_answers:
+        ctr_other_answers = defaultdict(list)
+        for ans, full in zip(others_exact_answers, others_full_answers):
             flag = 0
             if ans in ctr_other_exact_answers:
                 ctr_other_exact_answers[ans] += 1
+                ctr_other_answers[ans].append(full)
                 flag = 1
             else:
                 for existing_answer in ctr_other_exact_answers:
                     if (ans.lower() in existing_answer.lower()) or (existing_answer.lower() in ans.lower()):
                         ctr_other_exact_answers[existing_answer] += 1
+                        ctr_other_answers[existing_answer].append(full)
                         flag = 1
             if flag == 0:
                 ctr_other_exact_answers[ans] += 1
+                ctr_other_answers[ans].append(full)
 
         results.append(
             {
@@ -59,6 +65,8 @@ def get_error_stats(textual_answers, exact_answers, model_output_greedy, compute
                     ctr_other_exact_answers) > 0 else 0,
                 "wrong_answers": dict(ctr_other_exact_answers),
                 "wrong_answers_raw": others,
+                "wrong_exact_answers_clusters": ctr_other_exact_answers,
+                "wrong_answers_clusters": dict(ctr_other_answers),
                 "correct_answers_raw": correct_cluster,
                 "correct_answer": model_output_greedy.iloc[q_idx].correct_answer
             }

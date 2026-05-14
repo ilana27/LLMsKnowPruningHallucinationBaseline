@@ -227,7 +227,7 @@ def generate_model_answers(data, model, tokenizer, device, model_name, do_sample
                                     max_new_tokens=max_new_tokens, top_p=top_p, temperature=temperature,
                                     stop_token_id=stop_token_id, tokenizer=tokenizer)
 
-        answer = tokenizer.decode(model_output['sequences'][0][len(model_input[0]):])
+        answer = tokenizer.decode(model_output['sequences'][0][len(model_input[0]):], skip_special_tokens=True)
         ioid = model_output['sequences'][0].cpu()
 
         if output_scores:
