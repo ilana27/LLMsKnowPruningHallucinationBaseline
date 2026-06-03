@@ -124,6 +124,7 @@ case "$PHASE" in
       --model $MODEL \
       --dataset $DATASET \
       --seed 0 \
+      --n_samples 1000 \
       --probe_at mlp_last_layer_only_input ;;
   probe_train)
     python probe.py \
