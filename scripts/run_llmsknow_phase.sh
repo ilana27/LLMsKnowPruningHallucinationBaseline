@@ -61,6 +61,7 @@ case "$PHASE" in
   extract)
     python extract_exact_answer.py \
       --model $MODEL \
+      --extraction_model mistralai/Mistral-7B-Instruct-v0.2 \
       --dataset $DATASET ;;
   resample)
     LIM=$(resolve_limit "$LIMIT_SAMPLES" "$DATASET") || exit 1
@@ -98,6 +99,7 @@ case "$PHASE" in
     echo "Using resample_limit_samples=${RLIM} for ${DATASET}"
     python extract_exact_answer.py \
       --model $MODEL \
+      --extraction_model mistralai/Mistral-7B-Instruct-v0.2 \
       --dataset $DATASET \
       --do_resampling 30 \
       --resample_seed 42 \
@@ -110,6 +112,7 @@ case "$PHASE" in
     echo "Using resample_limit_samples=${RLIM} for ${DATASET}"
     python extract_exact_answer.py \
       --model $MODEL \
+      --extraction_model mistralai/Mistral-7B-Instruct-v0.2 \
       --dataset $DATASET \
       --do_resampling 30 \
       --resample_seed 42 \

@@ -211,14 +211,24 @@ def main():
             valid_lst_specific_index = []
             for resample_answers in all_resample_answers:
                 assert(len(model_answers) == len(resample_answers))
-                resample_answer = resample_answers[idx].split("\n")[0]
+                raw = resample_answers[idx]
+                if 'llama' in args.model.lower():
+                    # Drop the leading "<|start_header_id|>assistant<|end_header_id|>" header,
+                    # then keep only the first assistant turn (resamples can contain several).
+                    # Using .split("\n")[0] here would keep only the header and discard the answer.
+                    resample_answer = raw.split("<|end_header_id|>", 1)[-1].split("<|eot_id|>")[0].strip()
+                elif 'mistral' in args.model.lower():
+                    # Mistral instruct: answer ends at </s>; strip any template markers.
+                    resample_answer = raw.split("</s>")[0].replace("[INST]", "").replace("[/INST]", "").strip()
+                else:
+                    resample_answer = raw.split("\n")[0]
 
                 automatic_correctness = compute_correctness([row.question], args.dataset, args.model, [row['correct_answer']], model, [resample_answer], tokenizer, None)['correctness'][0]
 
                 exact_answer, valid = extract_exact_answer(model, tokenizer,
                                                            automatic_correctness,
                                                            row[question_col], resample_answer,
-                                                           row['correct_answer'], args.model)
+                                                           row['correct_answer'], args.extraction_model)
                 exact_answers_specific_index.append(exact_answer)
                 valid_lst_specific_index.append(valid)
                 if exact_answer == 'NO ANSWER':
