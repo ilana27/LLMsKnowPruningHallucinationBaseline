@@ -36,6 +36,7 @@ def parse_args():
     run_name = f"{model_short}_{args.dataset}" + (f"_chunk{args.tag}" if args.tag else "")
     wandb.init(
         project="extract_exact_answer",
+        entity="ilananguyen-brown-university",
         name=run_name,
         config=vars(args)
         )

@@ -38,11 +38,13 @@ def parse_args_and_init_wandb():
     if args.test_dataset is None:
         wandb.init(
             project="probe_hallucinations_specific",
+            entity="ilananguyen-brown-university",
             config=vars(args)
         )
     else:
         wandb.init(
             project="probe_hallucinations_generalization",
+            entity="ilananguyen-brown-university",
             config=vars(args)
         )
 

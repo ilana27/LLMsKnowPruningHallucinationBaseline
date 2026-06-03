@@ -33,6 +33,7 @@ def parse_args_and_init_wandb():
     model_short = MODEL_FRIENDLY_NAMES.get(args.model, args.model.split('/')[-1])
     wandb.init(
         project="retries_hallucinations",
+        entity="ilananguyen-brown-university",
         name=f"{model_short}_{args.dataset}",
         config=vars(args)
     )

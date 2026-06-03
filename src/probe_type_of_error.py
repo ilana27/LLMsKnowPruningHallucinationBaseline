@@ -33,6 +33,7 @@ def parse_args_and_init_wandb():
 
     wandb.init(
         project="probe_type_of_error",
+        entity="ilananguyen-brown-university",
         config=vars(args)
     )
 

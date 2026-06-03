@@ -25,6 +25,7 @@ def parse_args_and_init_wandb():
 
     wandb.init(
         project="p_true_detection",
+        entity="ilananguyen-brown-university",
         config=vars(args)
     )
 

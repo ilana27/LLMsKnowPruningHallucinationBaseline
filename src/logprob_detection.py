@@ -28,6 +28,7 @@ def parse_args_and_init_wandb():
 
     wandb.init(
         project="logprob",
+        entity="ilananguyen-brown-university",
         config=vars(args)
     )
 
