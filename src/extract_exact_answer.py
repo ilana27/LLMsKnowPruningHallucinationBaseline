@@ -145,15 +145,20 @@ def main():
     if args.do_resampling > 0:
         all_resample_answers = torch.load(resampling_file)
         n_resampled = len(all_resample_answers[0])
-        if len(model_answers) != n_resampled:
-            assert args.resample_seed is not None and args.resample_limit_samples is not None, (
-                "Resampling was run with --limit_samples; pass --resample_seed and "
-                "--resample_limit_samples to recover the sampled subset."
-            )
+        # resampling.py drew its rows with sample(limit_samples, random_state=seed).
+        # Reproduce that exact ordering here whenever the seed is known — even when
+        # limit_samples == len(model_answers) (full data), where sample() is a full
+        # permutation. The old len-mismatch guard skipped this in the full-data case,
+        # silently pairing model_answers[idx] with a different question's resamples.
+        if args.resample_seed is not None and args.resample_limit_samples is not None:
             sampled_indices = model_answers.sample(
                 args.resample_limit_samples, random_state=args.resample_seed
             ).index.tolist()
             model_answers = model_answers.loc[sampled_indices].reset_index(drop=True)
+        assert len(model_answers) == n_resampled, (
+            f"model_answers ({len(model_answers)}) and resamples ({n_resampled}) are "
+            "misaligned; pass matching --resample_seed and --resample_limit_samples."
+        )
 
     if args.n_chunks > 0 and args.tag:
         chunk_idx = int(args.tag) - 1  # tags are 1-indexed

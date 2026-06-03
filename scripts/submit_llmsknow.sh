@@ -46,8 +46,10 @@ LAYER=15
 TOKEN="last_q_token"
 THROTTLE=0
 ARRAY_OVERRIDE=""
-LIMIT_SAMPLES=200
-RESAMPLE_LIMIT_SAMPLES=200
+# "full" => use every row in the dataset's answers CSV (resolved per-dataset in
+# run_llmsknow_phase.sh). Pass an integer to --limit_samples to cap instead.
+LIMIT_SAMPLES=full
+RESAMPLE_LIMIT_SAMPLES=full
 DATASET_OVERRIDE=""
 
 while [[ $# -gt 0 ]]; do
@@ -97,7 +99,7 @@ JOB=$(sbatch --parsable \
     --output="$BASE/logs/${PHASE}_%A_%a.out" \
     --error="$BASE/logs/${PHASE}_%A_%a.err" \
     --array=${ARRAY_RANGE} \
-    --export=ALL,PHASE=${PHASE},LAYER=${LAYER},TOKEN=${TOKEN},LIMIT_SAMPLES=${LIMIT_SAMPLES},RESAMPLE_LIMIT_SAMPLES=${RESAMPLE_LIMIT_SAMPLES},DATASET_OVERRIDE=${DATASET_OVERRIDE},WANDB_MODE=offline \
+    --export=ALL,PHASE=${PHASE},LAYER=${LAYER},TOKEN=${TOKEN},LIMIT_SAMPLES=${LIMIT_SAMPLES},RESAMPLE_LIMIT_SAMPLES=${RESAMPLE_LIMIT_SAMPLES},DATASET_OVERRIDE=${DATASET_OVERRIDE},WANDB_MODE=online \
     $BASE/scripts/run_llmsknow_phase.sh)
 
 echo "Submitted array job ${JOB} for phase: ${PHASE} (array: ${ARRAY_RANGE})"

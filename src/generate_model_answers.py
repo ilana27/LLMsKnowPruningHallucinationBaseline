@@ -266,6 +266,7 @@ def init_wandb(args):
     model_short = MODEL_FRIENDLY_NAMES.get(args.model, args.model.split('/')[-1])
     wandb.init(
         project="generate_answers",
+        entity="ilananguyen-brown-university",
         name=f"{model_short}_{args.dataset}",
         config=cfg
     )
