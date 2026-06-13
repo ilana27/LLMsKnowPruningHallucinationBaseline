@@ -109,6 +109,20 @@ def compute_correctness_math(model_answers, labels):
 
     return {"correctness": correctness}
 
+def compute_correctness_gpqa(model_answers, labels):
+    """Multiple-choice letter match. Prefer an explicit 'answer: X' pattern, else
+    fall back to the first standalone A/B/C/D token in the output."""
+    import re
+    correctness = []
+    for ans, label in zip(model_answers, labels):
+        a = str(ans)
+        m = re.search(r'(?:answer|option|choice)\s*(?:is|:|=)?\s*\(?([ABCD])\b', a, re.IGNORECASE)
+        if not m:
+            m = re.search(r'\b([ABCD])\b', a)
+        pred = m.group(1).upper() if m else None
+        correctness.append(int(pred == str(label).strip().upper()))
+    return {"correctness": correctness}
+
 def compute_correctness_movies(model_answers, labels):
     correctness = []
     for model_answer, label in zip(model_answers, labels):
@@ -315,6 +329,7 @@ CORRECTNESS_FN = {
     'hotpotqa_with_context': compute_correctness_hotpotqa,
     'math': compute_correctness_math,
     'gsm8k': compute_correctness_math,
+    'gpqa': compute_correctness_gpqa,
     'movies': compute_correctness_movies,
     'mnli': compute_correctness_nli,
     'natural_questions_with_context': compute_correctness_natual_questions

@@ -222,6 +222,39 @@ def gsm8k_preprocess(model_name, all_questions, labels):
             A: Let's think step by step.''')
     return prompts
 
+def load_data_gpqa(test=False):
+    """GPQA Diamond (HF 'Idavidrein/gpqa', subset 'gpqa_diamond', 198 PhD-level MCQs).
+    Builds an A/B/C/D multiple-choice question with a deterministic per-example option
+    shuffle; label is the correct option letter. Diamond has a single split, so the
+    `test` flag is ignored (same 198 examples)."""
+    cache_dir = os.environ.get("HF_DATASETS_CACHE", "/oscar/scratch/inguyen4/hf_datasets")
+    ds = load_dataset("Idavidrein/gpqa", "gpqa_diamond", split="train", cache_dir=cache_dir)
+    letters = ["A", "B", "C", "D"]
+    questions, labels = [], []
+    for i, ex in enumerate(ds):
+        # index 0 is always the correct answer before shuffling
+        opts = [str(ex["Correct Answer"]).strip(),
+                str(ex["Incorrect Answer 1"]).strip(),
+                str(ex["Incorrect Answer 2"]).strip(),
+                str(ex["Incorrect Answer 3"]).strip()]
+        order = np.random.RandomState(i).permutation(4)
+        shuffled = [opts[j] for j in order]
+        correct_pos = int(list(order).index(0))
+        block = "\n".join(f"{letters[k]}. {shuffled[k]}" for k in range(4))
+        questions.append(f"{str(ex['Question']).strip()}\n\n{block}")
+        labels.append(letters[correct_pos])
+    return pd.Series(questions), pd.Series(labels)
+
+def gpqa_preprocess(model_name, all_questions, labels):
+    prompts = []
+    if 'instruct' in model_name.lower():
+        for q in all_questions:
+            prompts.append(q + "\n\nRespond with only the letter (A, B, C, or D) of the correct answer.")
+    else:
+        for q in all_questions:
+            prompts.append(q + "\nAnswer:")
+    return prompts
+
 def prepare_winogrande(model_name, all_questions, labels):
     prompts = []
     for q in all_questions:
@@ -516,6 +549,14 @@ def load_data(dataset_name):
         all_questions, labels = load_data_gsm8k(test=True)
         preprocess_fn = gsm8k_preprocess
         max_new_tokens = 400
+    elif dataset_name == 'gpqa':
+        all_questions, labels = load_data_gpqa(test=False)
+        preprocess_fn = gpqa_preprocess
+        max_new_tokens = 50
+    elif dataset_name == 'gpqa_test':
+        all_questions, labels = load_data_gpqa(test=True)
+        preprocess_fn = gpqa_preprocess
+        max_new_tokens = 50
     elif dataset_name == 'movies':
         all_questions, labels = load_data_movies(test=False)
         preprocess_fn = triviqa_preprocess
