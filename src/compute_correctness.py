@@ -314,6 +314,7 @@ CORRECTNESS_FN = {
     'hotpotqa': compute_correctness_hotpotqa,
     'hotpotqa_with_context': compute_correctness_hotpotqa,
     'math': compute_correctness_math,
+    'gsm8k': compute_correctness_math,
     'movies': compute_correctness_movies,
     'mnli': compute_correctness_nli,
     'natural_questions_with_context': compute_correctness_natual_questions

@@ -189,6 +189,39 @@ def math_preprocess(model_name, all_questions, labels):
             A:''')
     return prompts
 
+def _parse_gsm8k_answer(answer_str):
+    """GSM8k gold answers end with '#### <number>'. Return the final number as float."""
+    final = str(answer_str).split("####")[-1].strip()
+    final = final.replace(",", "").replace("$", "").replace("%", "").strip()
+    return float(final)
+
+def load_data_gsm8k(test=False):
+    """GSM8k (HF 'gsm8k'/'main'). Mirrors load_data_math: returns (questions, numeric labels).
+    Cached to shared scratch so SLURM workers reuse the download."""
+    cache_dir = os.environ.get("HF_DATASETS_CACHE", "/oscar/scratch/inguyen4/hf_datasets")
+    split = "test" if test else "train"
+    try:
+        ds = load_dataset("gsm8k", "main", split=split, cache_dir=cache_dir)
+    except Exception:
+        ds = load_dataset("openai/gsm8k", "main", split=split, cache_dir=cache_dir)
+    questions = pd.Series([ex["question"] for ex in ds])
+    labels = pd.Series([_parse_gsm8k_answer(ex["answer"]) for ex in ds])
+    return questions, labels
+
+def gsm8k_preprocess(model_name, all_questions, labels):
+    """GSM8k needs multi-step reasoning, so (unlike AnswerableMath's "Answer shortly.")
+    we elicit step-by-step reasoning then a final numeric answer. compute_correctness_math
+    substring-matches the gold number anywhere in the output, so CoT output is scored fine."""
+    prompts = []
+    if 'instruct' in model_name.lower():
+        for q in all_questions:
+            prompts.append(q + " Solve step by step, then give the final numeric answer.")
+    else:
+        for q in all_questions:
+            prompts.append(f'''Q: {q}
+            A: Let's think step by step.''')
+    return prompts
+
 def prepare_winogrande(model_name, all_questions, labels):
     prompts = []
     for q in all_questions:
@@ -475,6 +508,14 @@ def load_data(dataset_name):
         all_questions, labels = load_data_math(test=True)
         preprocess_fn = math_preprocess
         max_new_tokens = 200
+    elif dataset_name == 'gsm8k':
+        all_questions, labels = load_data_gsm8k(test=False)
+        preprocess_fn = gsm8k_preprocess
+        max_new_tokens = 400
+    elif dataset_name == 'gsm8k_test':
+        all_questions, labels = load_data_gsm8k(test=True)
+        preprocess_fn = gsm8k_preprocess
+        max_new_tokens = 400
     elif dataset_name == 'movies':
         all_questions, labels = load_data_movies(test=False)
         preprocess_fn = triviqa_preprocess
