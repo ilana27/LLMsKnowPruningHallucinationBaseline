@@ -196,16 +196,11 @@ def _parse_gsm8k_answer(answer_str):
     return float(final)
 
 def load_data_gsm8k(test=False):
-    """GSM8k (HF 'gsm8k'/'main'). Mirrors load_data_math: returns (questions, numeric labels).
-    Cached to shared scratch so SLURM workers reuse the download."""
-    cache_dir = os.environ.get("HF_DATASETS_CACHE", "/oscar/scratch/inguyen4/hf_datasets")
-    split = "test" if test else "train"
-    try:
-        ds = load_dataset("gsm8k", "main", split=split, cache_dir=cache_dir)
-    except Exception:
-        ds = load_dataset("openai/gsm8k", "main", split=split, cache_dir=cache_dir)
-    questions = pd.Series([ex["question"] for ex in ds])
-    labels = pd.Series([_parse_gsm8k_answer(ex["answer"]) for ex in ds])
+    """GSM8k from local CSV (data/gsm8k_{train,test}.csv, downloaded from HF 'openai/gsm8k'
+    'main'). Mirrors load_data_math: returns (questions, numeric labels)."""
+    data = pd.read_csv("../data/gsm8k_test.csv" if test else "../data/gsm8k_train.csv")
+    questions = data['question']
+    labels = data['answer'].map(_parse_gsm8k_answer)
     return questions, labels
 
 def gsm8k_preprocess(model_name, all_questions, labels):
@@ -223,15 +218,19 @@ def gsm8k_preprocess(model_name, all_questions, labels):
     return prompts
 
 def load_data_gpqa(test=False):
-    """GPQA Diamond (HF 'Idavidrein/gpqa', subset 'gpqa_diamond', 198 PhD-level MCQs).
-    Builds an A/B/C/D multiple-choice question with a deterministic per-example option
-    shuffle; label is the correct option letter. Diamond has a single split, so the
-    `test` flag is ignored (same 198 examples)."""
-    cache_dir = os.environ.get("HF_DATASETS_CACHE", "/oscar/scratch/inguyen4/hf_datasets")
-    ds = load_dataset("Idavidrein/gpqa", "gpqa_diamond", split="train", cache_dir=cache_dir)
+    """GPQA from local CSVs (data/gpqa_{extended,diamond}.csv, from HF 'Idavidrein/gpqa').
+    Test split = diamond (198 PhD-level MCQs); train split = extended minus diamond
+    (~348), deduped by 'Record ID'. Builds an A/B/C/D multiple-choice question with a
+    deterministic per-example option shuffle; label is the correct option letter."""
+    diamond = pd.read_csv("../data/gpqa_diamond.csv")
+    if test:
+        data = diamond.reset_index(drop=True)
+    else:
+        ext = pd.read_csv("../data/gpqa_extended.csv")
+        data = ext[~ext["Record ID"].isin(set(diamond["Record ID"]))].reset_index(drop=True)
     letters = ["A", "B", "C", "D"]
     questions, labels = [], []
-    for i, ex in enumerate(ds):
+    for i, ex in data.iterrows():
         # index 0 is always the correct answer before shuffling
         opts = [str(ex["Correct Answer"]).strip(),
                 str(ex["Incorrect Answer 1"]).strip(),
