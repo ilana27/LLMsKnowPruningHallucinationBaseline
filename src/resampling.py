@@ -68,7 +68,39 @@ def main(args):
         "exact_answer": [],
         "valid_exact_answer": []
     }
-    for i in range(args.n_resamples):
+    # --- per-round checkpointing: the textual_answers / input_output_ids files are
+    # written (atomically) after each resample round and reloaded on restart, so a
+    # killed job resumes from the last completed round instead of from scratch. ---
+    out_dir = "../output/resampling"
+    os.makedirs(out_dir, exist_ok=True)
+    base = f"{out_dir}/{MODEL_FRIENDLY_NAMES[args.model]}_{args.dataset}_{args.n_resamples}"
+    ta_path = f"{base}_textual_answers{args.tag}.pt"
+    ioid_path = f"{base}_input_output_ids{args.tag}.pt"
+
+    def _atomic_save(obj, path):
+        tmp = f"{path}.tmp"
+        torch.save(obj, tmp)
+        os.replace(tmp, path)
+
+    if os.path.exists(ta_path) and os.path.exists(ioid_path):
+        try:
+            ta_ckpt = torch.load(ta_path)
+            ioid_ckpt = torch.load(ioid_path)
+            n_done = min(len(ta_ckpt), len(ioid_ckpt))
+            # Only resume if the checkpoint matches the current data size; guards against
+            # stale checkpoints from a previous run with a different limit_samples
+            # (e.g. the old 50-sample files).
+            if 0 < n_done <= args.n_resamples and len(ta_ckpt[0]) == len(data):
+                all_textual_answers = list(ta_ckpt[:n_done])
+                all_input_output_ids = list(ioid_ckpt[:n_done])
+                print(f"Resuming from checkpoint: {n_done}/{args.n_resamples} rounds done (data size {len(data)} matches)")
+            else:
+                stale = len(ta_ckpt[0]) if n_done else 'NA'
+                print(f"Ignoring stale checkpoint (round size {stale} != data size {len(data)}); starting fresh")
+        except Exception as e:
+            print(f"Checkpoint load failed ({e}); starting fresh")
+
+    for i in range(len(all_textual_answers), args.n_resamples):
         print(f"Retry #{i}")
         textual_answers, input_output_ids, _, _ = generate_model_answers(data.question, model,
                                                                                               tokenizer, model.device,
@@ -80,6 +112,9 @@ def main(args):
                                                                                               stop_token_id=stop_token_id)
         all_textual_answers.append(textual_answers)
         all_input_output_ids.append(input_output_ids)
+        _atomic_save(all_textual_answers, ta_path)
+        _atomic_save(all_input_output_ids, ioid_path)
+        print(f"Checkpoint saved: {len(all_textual_answers)}/{args.n_resamples} rounds")
 
     all_different_correctness = []
     total_correctness = np.zeros(len(all_textual_answers[0]))
@@ -113,8 +148,10 @@ def main(args):
     if not os.path.exists("../output/resampling"):
         os.makedirs("../output/resampling")
 
-    torch.save(all_textual_answers, f"../output/resampling/{MODEL_FRIENDLY_NAMES[args.model]}_{args.dataset}_{args.n_resamples}_textual_answers{args.tag}.pt")
-    torch.save(all_input_output_ids, f"../output/resampling/{MODEL_FRIENDLY_NAMES[args.model]}_{args.dataset}_{args.n_resamples}_input_output_ids{args.tag}.pt")
+    # textual_answers / input_output_ids were already written incrementally by the
+    # per-round checkpointing above; final atomic re-save for consistency.
+    _atomic_save(all_textual_answers, ta_path)
+    _atomic_save(all_input_output_ids, ioid_path)
     if sampled_indices is not None:
         torch.save(sampled_indices, f"../output/resampling/{MODEL_FRIENDLY_NAMES[args.model]}_{args.dataset}_{args.n_resamples}_sample_indices{args.tag}.pt")
 
