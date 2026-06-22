@@ -179,7 +179,13 @@ def get_token_index(token, tokenizer, question, model_name, full_answer_tokenize
     if (type(token) == str) and ('exact' in token):
         if exact_answer_is_valid(exact_answer_valid, exact_answer):
             if (not use_dict) or (question not in exact_tokens_dict):
-                t = get_indices_of_exact_answer(tokenizer, full_answer_tokenized, exact_answer, model_name, prompt=question)
+                try:
+                    t = get_indices_of_exact_answer(tokenizer, full_answer_tokenized, exact_answer, model_name, prompt=question)
+                except AssertionError:
+                    # exact_answer is marked valid but its string is not literally found in the
+                    # decoded answer (tokenization/cleaning mismatch on a small number of samples);
+                    # fall back to last_q_token, same as the invalid-exact-answer case below.
+                    return get_token_index('last_q_token', tokenizer, question, model_name, exact_answer, exact_answer_valid)
                 exact_tokens_dict[question] = t
             else:
                 t = exact_tokens_dict[question]
