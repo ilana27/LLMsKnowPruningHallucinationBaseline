@@ -102,10 +102,35 @@ def compute_correctness_hotpotqa(model_answers, labels):
 
 
 def compute_correctness_math(model_answers, labels):
+    # Extract the model's FINAL numeric answer and compare it to the gold value
+    # with float tolerance. The old version did a substring match (str(label) in
+    # answer), which credited the gold number appearing anywhere in the reasoning
+    # chain -- heavily inflating accuracy (e.g. greedy 0.96 vs ~0.50 real).
+    import re
+    num_re = r'-?\d[\d,]*\.?\d*'
+
+    def to_num(s):
+        s = str(s).replace(',', '').replace('$', '').strip().rstrip('.')
+        try:
+            return float(s)
+        except ValueError:
+            return None
+
     correctness = []
     for model_answer, label in zip(model_answers, labels):
-        is_correct = (str(label) in model_answer.lower()) or (str(int(label)) in model_answer.lower())
-        correctness.append(int(is_correct))
+        ans = str(model_answer)
+        gold = to_num(label)
+        if gold is None:
+            # non-numeric gold (rare): fall back to a case-insensitive substring
+            correctness.append(int(str(label).lower().strip() in ans.lower()))
+            continue
+        # prefer the last number following an 'answer is' / ':' / '=' anchor,
+        # otherwise the last number stated in the text
+        anchored = re.findall(r'(?:answer\s*(?:is|:|=)?|=)\s*\$?\s*(' + num_re + r')', ans, re.IGNORECASE)
+        nums = re.findall(num_re, ans)
+        cand = anchored[-1] if anchored else (nums[-1] if nums else None)
+        pred = to_num(cand) if cand is not None else None
+        correctness.append(int(pred is not None and abs(pred - gold) < 1e-4))
 
     return {"correctness": correctness}
 

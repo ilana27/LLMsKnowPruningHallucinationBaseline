@@ -535,11 +535,11 @@ def load_data(dataset_name):
     elif dataset_name == 'math':
         all_questions, labels = load_data_math(test=False)
         preprocess_fn = math_preprocess
-        max_new_tokens = 200
+        max_new_tokens = 512
     elif dataset_name == 'math_test':
         all_questions, labels = load_data_math(test=True)
         preprocess_fn = math_preprocess
-        max_new_tokens = 200
+        max_new_tokens = 512
     elif dataset_name == 'gsm8k':
         all_questions, labels = load_data_gsm8k(test=False)
         preprocess_fn = gsm8k_preprocess

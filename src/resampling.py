@@ -60,6 +60,10 @@ def main(args):
     if 'instruct' not in args.model.lower():
         stop_token_id = tokenizer.encode('\n', add_special_tokens=False)[-1]
 
+    # math/gsm8k need more than the 100-token default or the multi-step reasoning
+    # is truncated before the final answer (matches generate_model_answers.py).
+    gen_max_new_tokens = 512 if any(k in args.dataset for k in ('math', 'gsm8k')) else 100
+
     greedy_correctness = np.mean(data['automatic_correctness'].mean())
     wandb.summary['greedy_correcntess'] = greedy_correctness
 
@@ -109,6 +113,7 @@ def main(args):
                                                                                               output_scores=False,
                                                                                               temperature=args.temperature,
                                                                                               top_p=args.top_p,
+                                                                                              max_new_tokens=gen_max_new_tokens,
                                                                                               stop_token_id=stop_token_id)
         all_textual_answers.append(textual_answers)
         all_input_output_ids.append(input_output_ids)
